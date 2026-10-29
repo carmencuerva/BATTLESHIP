@@ -16,6 +16,9 @@ dependencies = ["PyYAML>=6"]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10", "types-PyYAML"]
 docs = ["mkdocs-material>=9", "mkdocs-static-i18n>=1"]
 
+[project.scripts]
+battleship-tournament = "battleship.tournament:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/battleship"]
 

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from battleship.manifest import MANIFEST_NAME, ManifestEntry, read_manifest
+from battleship.manifest import MANIFEST_NAME, ManifestEntry, ManifestError, read_manifest
 from battleship.player import Player
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,31}$")
@@ -33,6 +33,7 @@ class PlayerInfo:
     icon: str
     cls: type[Player]
     source: str  # e.g. "builtin/random_bot.py"
+    entry: ManifestEntry | None = None  # where to re-import it from (e.g. in a subprocess)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -77,7 +78,7 @@ def _is_icon(value: object) -> bool:
     )
 
 
-def player_info(cls: type[Player], source: str) -> PlayerInfo:
+def player_info(cls: type[Player], source: str, entry: ManifestEntry | None = None) -> PlayerInfo:
     """Read and validate ``cls``'s identity without constructing it."""
     try:
         name = cls.get_name()
@@ -98,21 +99,42 @@ def player_info(cls: type[Player], source: str) -> PlayerInfo:
         raise RegistryError(f"{source}: get_description() must return a string")
     if not _is_icon(icon):
         raise RegistryError(f"{source}: get_icon() must return a single emoji, got {icon!r}")
-    return PlayerInfo(name, list(authors), description, icon, cls, source)
+    return PlayerInfo(name, list(authors), description, icon, cls, source, entry)
 
 
-def load_players(manifests: Iterable[str | Path]) -> list[PlayerInfo]:
-    """Every player admitted by ``manifests``, in manifest order. Names must be unique."""
+def load_players(
+    manifests: Iterable[str | Path], rejected: list[dict[str, str]] | None = None
+) -> list[PlayerInfo]:
+    """Every player admitted by ``manifests``, in manifest order. Names must be unique.
+
+    By default the first problem raises. If a ``rejected`` list is given, broken players
+    (or whole broken manifests) are appended to it as ``{"source", "error"}`` and skipped,
+    so one bad submission cannot stop a tournament.
+    """
     players: list[PlayerInfo] = []
     by_name: dict[str, PlayerInfo] = {}
     for manifest in manifests:
-        for entry in read_manifest(manifest):
-            info = player_info(load_class(entry), entry.source)
-            taken = by_name.get(info.name)
-            if taken:
-                raise RegistryError(
-                    f"{entry.source}: name {info.name!r} already used by {taken.source}"
-                )
+        try:
+            entries = read_manifest(manifest)
+        except ManifestError as exc:
+            if rejected is None:
+                raise
+            path = Path(manifest)
+            rejected.append({"source": f"{path.parent.name}/{path.name}", "error": str(exc)})
+            continue
+        for entry in entries:
+            try:
+                info = player_info(load_class(entry), entry.source, entry)
+                taken = by_name.get(info.name)
+                if taken:
+                    raise RegistryError(
+                        f"{entry.source}: name {info.name!r} already used by {taken.source}"
+                    )
+            except RegistryError as exc:
+                if rejected is None:
+                    raise
+                rejected.append({"source": entry.source, "error": str(exc)})
+                continue
             by_name[info.name] = info
             players.append(info)
     return players

@@ -1,0 +1,154 @@
+{
+  "format": "league",
+  "config": {
+    "format": "league",
+    "games_per_pair": 20,
+    "seed": 0,
+    "size": 10,
+    "fleet": [
+      5,
+      4,
+      3,
+      3,
+      2
+    ],
+    "time_budget": 2.0,
+    "build_budget": 2.0
+  },
+  "standings": [
+    {
+      "name": "hard",
+      "authors": [
+        "Battleship Arena"
+      ],
+      "description": "Hides its fleet where hunters look least; shoots the most likely cell.",
+      "icon": "🧠",
+      "source": "builtin/hard_bot.py",
+      "points": 55.0,
+      "elo": 1752.2,
+      "played": 60,
+      "wins": 55,
+      "losses": 5,
+      "draws": 0,
+      "forfeits": 0,
+      "forfeit_reasons": {},
+      "wins_first": 28,
+      "wins_second": 27,
+      "avg_shots_to_win": 37.2,
+      "hit_rate": 0.448,
+      "rank": 1
+    },
+    {
+      "name": "medium",
+      "authors": [
+        "Battleship Arena"
+      ],
+      "description": "Random fleet; hunts on a parity grid, then finishes every ship it hits.",
+      "icon": "🎯",
+      "source": "builtin/medium_bot.py",
+      "points": 45.0,
+      "elo": 1630.3,
+      "played": 60,
+      "wins": 45,
+      "losses": 15,
+      "draws": 0,
+      "forfeits": 0,
+      "forfeit_reasons": {},
+      "wins_first": 23,
+      "wins_second": 22,
+      "avg_shots_to_win": 51.5,
+      "hit_rate": 0.336,
+      "rank": 2
+    },
+    {
+      "name": "easy",
+      "authors": [
+        "Battleship Arena"
+      ],
+      "description": "Random fleet; shoots row by row, left to right.",
+      "icon": "🐣",
+      "source": "builtin/easy_bot.py",
+      "points": 16.0,
+      "elo": 1428.4,
+      "played": 60,
+      "wins": 16,
+      "losses": 44,
+      "draws": 0,
+      "forfeits": 0,
+      "forfeit_reasons": {},
+      "wins_first": 9,
+      "wins_second": 7,
+      "avg_shots_to_win": 83.9,
+      "hit_rate": 0.192,
+      "rank": 3
+    },
+    {
+      "name": "random",
+      "authors": [
+        "Battleship Arena"
+      ],
+      "description": "Random fleet; shoots any unshot cell at random. The baseline.",
+      "icon": "🎲",
+      "source": "builtin/random_bot.py",
+      "points": 4.0,
+      "elo": 1189.1,
+      "played": 60,
+      "wins": 4,
+      "losses": 56,
+      "draws": 0,
+      "forfeits": 0,
+      "forfeit_reasons": {},
+      "wins_first": 3,
+      "wins_second": 1,
+      "avg_shots_to_win": 97.5,
+      "hit_rate": 0.172,
+      "rank": 4
+    }
+  ],
+  "pairs": [
+    {
+      "a": "easy",
+      "b": "hard",
+      "wins_a": 0,
+      "wins_b": 20,
+      "draws": 0
+    },
+    {
+      "a": "easy",
+      "b": "medium",
+      "wins_a": 0,
+      "wins_b": 20,
+      "draws": 0
+    },
+    {
+      "a": "easy",
+      "b": "random",
+      "wins_a": 16,
+      "wins_b": 4,
+      "draws": 0
+    },
+    {
+      "a": "hard",
+      "b": "medium",
+      "wins_a": 15,
+      "wins_b": 5,
+      "draws": 0
+    },
+    {
+      "a": "hard",
+      "b": "random",
+      "wins_a": 20,
+      "wins_b": 0,
+      "draws": 0
+    },
+    {
+      "a": "medium",
+      "b": "random",
+      "wins_a": 20,
+      "wins_b": 0,
+      "draws": 0
+    }
+  ],
+  "rejected": [],
+  "generated_at": "2026-10-29T17:31:29+00:00"
+}
