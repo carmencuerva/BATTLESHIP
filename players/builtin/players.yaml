@@ -1,0 +1,7 @@
+# Reference ladder, weakest first. Each entry admits one player:
+# a .py file in this folder and the Player subclass inside it.
+players:
+  - file: random_bot.py
+    class: RandomBot
+  - file: easy_bot.py
+    class: EasyBot
