@@ -5,3 +5,7 @@ players:
     class: RandomBot
   - file: easy_bot.py
     class: EasyBot
+  - file: medium_bot.py
+    class: MediumBot
+  - file: hard_bot.py
+    class: HardBot
