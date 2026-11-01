@@ -60,7 +60,7 @@ Submitted bots (`players/custom/`):
 
 | bot | author | strategy |
 |-----|--------|----------|
-| 🐬 lucia | Lucía Argüello | skips water the no-touch rule gives away; hunts far from earlier shots |
+| 🐬 lucia | Lucía Argüello | skips water the no-touch rule gives away; hunts where the longest ship still fits; hides its fleet like hard |
 
 ## Repository layout
 

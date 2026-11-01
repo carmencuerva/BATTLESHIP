@@ -61,7 +61,7 @@ Bots enviados (`players/custom/`):
 
 | bot | autora | estrategia |
 |-----|--------|------------|
-| 🐬 lucia | Lucía Argüello | descarta el agua que delata la regla de no tocarse; busca lejos de los disparos anteriores |
+| 🐬 lucia | Lucía Argüello | descarta el agua que delata la regla de no tocarse; busca donde aún cabe el barco más largo; esconde su flota como hard |
 
 ## Estructura del repositorio
 

@@ -1,12 +1,12 @@
 import random
 
-from battleship.bots import hit_clusters, random_fleet
+from battleship.bots import hit_clusters, stealth_fleet
 from battleship.game import HIT, SUNK, UNKNOWN, in_bounds, neighbours
 from battleship.player import Player
 
 
 class LuciaBot(Player):
-    """Uses the no-touch rule to skip certain water and hunts far from earlier shots."""
+    """Uses the no-touch rule to skip certain water, hunts where the longest ship still fits."""
 
     @classmethod
     def get_name(cls):
@@ -18,7 +18,7 @@ class LuciaBot(Player):
 
     @classmethod
     def get_description(cls):
-        return "Skips water the no-touch rule gives away; hunts far from earlier shots."
+        return "Skips water the no-touch rule gives away; hunts where the longest ship fits."
 
     @classmethod
     def get_icon(cls):
@@ -32,7 +32,8 @@ class LuciaBot(Player):
         self.rng = random.Random(seed)
 
     def choose_placement(self, board_size, fleet):
-        return random_fleet(board_size, fleet, self.rng)
+        # Hidden where probability hunters look least (the same placer as "hard").
+        return stealth_fleet(board_size, fleet, self.rng)
 
     def choose_shot(self, view):
         size, cells = view["size"], view["cells"]
@@ -56,23 +57,34 @@ class LuciaBot(Player):
                 self.last_info = {"heatmap": self.grid(size, {cell: 1 for cell in options})}
                 return self.rng.choice(options)
 
-        # Hunt: on the parity grid of the shortest ship left, as far as possible from
-        # every shot so far (big empty areas are where the long ships fit).
+        # Hunt: on the parity grid of the shortest ship left, where the longest ship left
+        # fits in most ways; among equals, as far as possible from every earlier shot.
         step = min(view["remaining"], default=1)
+        longest = max(view["remaining"], default=1)
         shots = [(r, c) for r in range(size) for c in range(size) if cells[r][c] != UNKNOWN]
         free = [(r, c) for r in range(size) for c in range(size) if open_cell((r, c))]
         candidates = [(r, c) for r, c in free if (r + c) % step == 0] or free
         if not candidates:  # only certain water is left (cannot happen in a legal game)
             candidates = [(r, c) for r in range(size) for c in range(size) if cells[r][c] == 0]
 
+        def fits(cell):
+            """Placements of the longest ship over open cells that cover ``cell``."""
+            count = 0
+            for dr, dc in ((0, 1), (1, 0)):
+                for k in range(longest):
+                    r, c = cell[0] - dr * k, cell[1] - dc * k
+                    if all(open_cell((r + dr * m, c + dc * m)) for m in range(longest)):
+                        count += 1
+            return count
+
         def room(cell):
             if not shots:
                 return 1 + min(cell[0], cell[1], size - 1 - cell[0], size - 1 - cell[1])
             return min(abs(cell[0] - r) + abs(cell[1] - c) for r, c in shots)
 
-        scores = {cell: room(cell) for cell in candidates}
+        scores = {cell: (fits(cell), room(cell)) for cell in candidates}
         best = max(scores.values())
-        self.last_info = {"heatmap": self.grid(size, scores)}
+        self.last_info = {"heatmap": self.grid(size, {cell: s[0] for cell, s in scores.items()})}
         return self.rng.choice([cell for cell, score in scores.items() if score == best])
 
     @staticmethod
