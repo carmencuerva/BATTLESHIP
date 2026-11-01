@@ -2,10 +2,14 @@
 // this file only decides what to draw and when to ask Python for the next move.
 
 import { startArena } from "../pyodide-bootstrap.js";
-import { coord, renderBoard, UNKNOWN } from "./board.js";
+import { cellRect, coord, lockBoard, renderBoard, UNKNOWN } from "./board.js";
+import { closeEndScreen, showEndScreen } from "./endscreen.js";
+import { bubbles, explode, launchMissile, splash } from "./fx.js";
 import { esc, th } from "./html.js";
 import { getLang, setLang, t } from "./i18n.js";
 import { leaderboardHtml } from "./leaderboard.js";
+import { createParrot } from "./parrot.js";
+import { miniShip } from "./ships.js";
 
 const app = document.getElementById("app");
 const SPEEDS = { slow: 900, normal: 400, fast: 60 };
@@ -73,6 +77,7 @@ for (const [id, [, screenFn]] of Object.entries(NAV)) {
     if (!arena) return;
     if (match && !match.over && !confirm(t("confirm_leave"))) return;
     stopMatch();
+    leaveGame();
     match = null;
     show(screenFn());
   });
@@ -318,8 +323,11 @@ function stopMatch() {
   }
 }
 
+let matchCount = 0;
+
 function startMatch() {
   stopMatch();
+  closeEndScreen();
   const { mode } = settings;
   const kinds = { hvb: ["human", "bot"], bvb: ["bot", "bot"], hvh: ["human", "human"] }[mode];
   const bots = { hvb: [null, settings.opponent], bvb: [settings.botA, settings.botB], hvh: [null, null] }[mode];
@@ -332,6 +340,7 @@ function startMatch() {
     return (i === 0 ? settings.nameA : settings.nameB) || t(i === 0 ? "name_a" : "name_b");
   });
   match = {
+    id: ++matchCount,
     mode,
     size: settings.size,
     fleet: settings.fleet.slice(),
@@ -349,7 +358,10 @@ function startMatch() {
     shots: [0, 0],
     last: [null, null],
     over: null,
-    locked: false,
+    locked: false, // hot-seat: waiting for the device to change hands
+    busy: false, // a missile is in the air
+    fresh: null, // the shot to animate on the next draw
+    endShown: false,
     hints: true,
     xray: mode === "bvb",
     timer: null,
@@ -447,7 +459,7 @@ function placementScreen(i) {
     const ships = fleet
       .map((length, k) => {
         const classes = ["ship-pick", ed.placement[k] ? "placed" : "", ed.selected === k ? "selected" : ""];
-        return `<button class="${classes.join(" ")}" data-k="${k}"><span class="bar" style="--len:${length}"></span>${length}</button>`;
+        return `<button class="${classes.join(" ")}" data-k="${k}">${miniShip(length)}<span>${length}</span></button>`;
       })
       .join("");
     app.innerHTML = `
@@ -455,7 +467,7 @@ function placementScreen(i) {
         <h2>${th("place_title", { name: side.name })}</h2>
         <p class="help">${th("place_help")}</p>
         <div class="place-layout">
-          <div id="place-board"></div>
+          <div class="board-frame"><div id="place-board"></div></div>
           <div class="side">
             <div class="ship-list">${ships}</div>
             <p>${th(ed.orient === "H" ? "horizontal" : "vertical")}</p>
@@ -518,6 +530,44 @@ function passScreen(i, then) {
 }
 
 // --- battle -----------------------------------------------------------------------------
+//
+// The game screen is built once per match (and per viewer in hot-seat games) so the parrot
+// and running animations survive redraws; gameScreen() then refreshes boards and labels.
+// Effects follow the game: a shot is decided by Python first, then the missile flies, then
+// the new board is drawn with the matching effect (splash, flames or sinking ship).
+
+const MISSILE_MS = { slow: 800, normal: 600, fast: 280 };
+const HUMAN_MISSILE_MS = 620;
+let layout = null; // {key, dock, parrot, active, logOpen}
+
+function boardSides() {
+  const me = match.mode === "bvb" ? null : match.viewer;
+  const left = me ?? 0;
+  return { me, left, right: 1 - left };
+}
+
+function boardEl(side) {
+  const { left } = boardSides();
+  return app.querySelector(side === left ? "#board-left" : "#board-right");
+}
+
+// The parrot speaks plain text (it is set with textContent, never as HTML).
+function say(key, vars = {}, options = {}) {
+  layout?.parrot.say(t(key, vars), options);
+}
+
+function sayTurn() {
+  const side = match.sides[match.attacker];
+  if (match.mode === "hvb") say(side.kind === "human" ? "p_your_turn" : "p_opp_turn", {}, { mood: "turn" });
+  else if (match.mode === "hvh") say("p_your_turn_named", { name: side.name }, { mood: "turn" });
+  else say("p_turn_of", { name: side.name }, { mood: "turn" });
+}
+
+function leaveGame() {
+  closeEndScreen();
+  layout?.parrot.destroy();
+  layout = null;
+}
 
 function beginBattle() {
   match.attacker = Math.random() < 0.5 ? 0 : 1;
@@ -525,47 +575,87 @@ function beginBattle() {
   match.log.push({ key: "first_shooter", vars: { name: match.sides[match.attacker].name } });
   if (match.mode === "hvh") show(() => passScreen(match.attacker, () => show(gameScreen)));
   else show(gameScreen);
-  continueTurn(false);
+  continueTurn(true);
 }
 
 function forfeit(i, reason) {
   match.over = { winner: 1 - i, forfeit: i, reason };
   stopMatch();
   show(gameScreen);
+  say("p_forfeit", { name: match.sides[i].name }, { mood: "info", sub: reason });
+  finishGame(1400);
 }
 
-function fire(shot) {
-  const a = match.attacker;
+async function fire(shot) {
+  const m = match;
+  const a = m.attacker;
   const d = 1 - a;
-  const res = arena.call("shoot", match.sides[d].board, shot, a);
+  const res = arena.call("shoot", m.sides[d].board, shot, a);
   if (res.error) {
-    if (match.sides[a].kind === "bot") forfeit(a, res.error);
+    if (m.sides[a].kind === "bot") forfeit(a, res.error);
     return;
   }
-  match.sides[d].board = res.board;
-  match.shots[a] += 1;
-  match.last[d] = shot;
-  const key = { miss: "shot_miss", hit: "shot_hit", sunk: "shot_sunk" }[res.result.outcome];
-  match.log.push({ key, vars: { name: match.sides[a].name, cell: coord(...shot), length: res.result.length } });
+
+  // 1. The missile flies while nothing else may happen (no second shot, no bot move).
+  m.busy = true;
+  const target = boardEl(d);
+  const origin = boardEl(a);
+  if (target) lockBoard(target);
+  if (target && origin) {
+    const duration = m.sides[a].kind === "bot" ? MISSILE_MS[settings.speed] ?? MISSILE_MS.normal : HUMAN_MISSILE_MS;
+    await launchMissile(origin.getBoundingClientRect(), cellRect(target, ...shot), duration);
+  }
+  if (match !== m) return; // the player left or restarted meanwhile
+
+  // 2. Commit the result Python already computed.
+  const outcome = res.result.outcome;
+  m.sides[d].board = res.board;
+  m.shots[a] += 1;
+  m.last[d] = shot;
+  const logKey = { miss: "shot_miss", hit: "shot_hit", sunk: "shot_sunk" }[outcome];
+  m.log.push({ key: logKey, vars: { name: m.sides[a].name, cell: coord(...shot), length: res.result.length } });
+  const changed = res.next !== a;
   if (res.terminal) {
-    match.over = { winner: a };
+    m.over = { winner: a };
+  } else {
+    m.attacker = res.next;
+    if (m.mode === "hvh" && changed) m.locked = true; // the device changes hands first
+  }
+  m.busy = false;
+
+  // 3. Draw the new boards once, with this shot's effect, then announce it.
+  m.fresh = { side: d, cell: shot, outcome };
+  gameScreen();
+  m.fresh = null;
+  const landed = boardEl(d);
+  if (landed) {
+    const rect = cellRect(landed, ...shot);
+    if (outcome === "miss") splash(rect);
+    else explode(rect, outcome === "sunk");
+    const sinking = landed.querySelector(".ship.sinking");
+    if (sinking) bubbles(sinking.getBoundingClientRect());
+  }
+  if (outcome === "miss") say("p_miss", {}, { mood: "miss" });
+  else if (outcome === "hit") say("p_hit", {}, { mood: "hit" });
+  else say("p_sunk", {}, { mood: "sunk", sub: t("p_sunk_sub", { length: res.result.length }) });
+
+  if (res.terminal) {
     stopMatch();
-    show(gameScreen);
+    finishGame(1900);
     return;
   }
-  match.attacker = res.next;
-  gameScreen();
-  continueTurn(res.next !== a);
+  if (changed && m.mode !== "hvh") sayTurn();
+  continueTurn(changed, outcome);
 }
 
-function continueTurn(changed) {
+function continueTurn(changed, outcome) {
   if (match.over) return;
   const side = match.sides[match.attacker];
   if (side.kind === "bot") {
-    match.timer = setTimeout(botTurn, SPEEDS[settings.speed] ?? SPEEDS.normal);
+    // Leave time to read the parrot and to watch a ship go down.
+    const pause = (SPEEDS[settings.speed] ?? SPEEDS.normal) + (changed ? 450 : 0) + (outcome === "sunk" ? 700 : 0);
+    match.timer = setTimeout(botTurn, pause);
   } else if (match.mode === "hvh" && changed) {
-    match.locked = true;
-    gameScreen();
     match.timer = setTimeout(() => {
       const next = match.attacker;
       show(() =>
@@ -575,11 +665,12 @@ function continueTurn(changed) {
           show(gameScreen);
         }),
       );
-    }, 1200);
+    }, 1800);
   }
 }
 
 function botTurn() {
+  if (!match || match.over) return;
   const a = match.attacker;
   const side = match.sides[a];
   const view = arena.call("status", match.sides[1 - a].board).view;
@@ -591,57 +682,138 @@ function botTurn() {
 
 function humanShot(r, c, view) {
   const me = match.viewer;
-  if (match.over || match.locked || match.attacker !== me || match.sides[me].kind !== "human") return;
+  if (match.over || match.locked || match.busy) return;
+  if (match.attacker !== me || match.sides[me].kind !== "human") return;
   if (view.cells[r][c] !== UNKNOWN) return;
   fire([r, c]);
 }
 
-function remainingHtml(view) {
-  return view.remaining.map((length) => `<span class="bar" style="--len:${length}" title="${length}"></span>`).join("");
+// --- end of the game ---------------------------------------------------------------------
+
+function finishGame(delay) {
+  const m = match;
+  if (m.endShown) return; // exactly one end sequence per match
+  m.endShown = true;
+  setTimeout(() => {
+    if (match === m) showEnd(m);
+  }, delay);
 }
 
-function boardPanel(id, title, status, extra = "") {
-  return `
-    <div class="board-panel">
-      <h3>${title}</h3>
-      <div id="${id}"></div>
-      <div class="afloat"><span>${th("afloat")}:</span> ${remainingHtml(status.view)} ${extra}</div>
+function showEnd(m) {
+  const w = m.over.winner;
+  const winner = m.sides[w];
+  const loser = m.sides[1 - w];
+  // Only a human playing a bot can lose; otherwise the screen celebrates the winner.
+  const kind = m.mode === "hvb" && winner.kind !== "human" ? "defeat" : "victory";
+  let sub;
+  if (m.over.forfeit != null) sub = t("end_forfeit", { name: loser.name });
+  else if (kind === "defeat") sub = t("end_defeat_sub", { name: winner.name, shots: m.shots[w] });
+  else if (m.mode === "hvb") sub = t("end_victory_sub", { shots: m.shots[w] });
+  else sub = t("end_winner_sub", { name: winner.name, shots: m.shots[w] });
+  showEndScreen(
+    kind,
+    {
+      title: t(kind === "victory" ? "victory" : "defeat"),
+      sub,
+      again: t("play_again"),
+      menu: t("back_menu"),
+      boards: t("end_boards"),
+    },
+    {
+      onAgain: startMatch,
+      onMenu: () => {
+        leaveGame();
+        match = null;
+        show(menuScreen);
+      },
+    },
+  );
+}
+
+// --- the game screen ---------------------------------------------------------------------
+
+function ensureLayout() {
+  const { left } = boardSides();
+  const key = `${match.id}:${left}`;
+  if (layout?.key === key && app.contains(layout.dock)) return false;
+  layout?.parrot.destroy();
+  const panel = (id) => `
+    <div class="board-panel" id="panel-${id}">
+      <div class="nameplate" id="plate-${id}"></div>
+      <div class="board-frame"><div id="board-${id}"></div></div>
+      <div class="afloat" id="afloat-${id}"></div>
     </div>`;
+  app.innerHTML = `
+    <section class="game">
+      <div class="arena">
+        ${panel("left")}
+        <div class="commentator" id="parrot-dock"></div>
+        ${panel("right")}
+      </div>
+      <div class="game-side" id="game-side"></div>
+    </section>`;
+  const dock = app.querySelector("#parrot-dock");
+  layout = { key, dock, parrot: createParrot(dock), active: null, logOpen: false };
+  return true;
+}
+
+function plateHtml(side, caption, active) {
+  return `
+    <img class="hat" src="img/hat.webp" alt="" draggable="false">
+    <span class="pname">${esc(side.icon)} ${esc(side.name)}</span>
+    <span class="caption">${caption}</span>
+    ${active ? `<span class="sr-only">${th("turn_of", { name: side.name })}</span>` : ""}`;
+}
+
+// Moves the pirate hat from one name to the other with a little hop.
+function flyHat(fromRect, toHat) {
+  if (!fromRect || !toHat || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const toRect = toHat.getBoundingClientRect();
+  if (!toRect.width) return;
+  const ghost = toHat.cloneNode();
+  ghost.className = "hat-flying";
+  Object.assign(ghost.style, {
+    left: `${fromRect.left}px`,
+    top: `${fromRect.top}px`,
+    width: `${fromRect.width}px`,
+    height: `${fromRect.height}px`,
+  });
+  document.body.appendChild(ghost);
+  toHat.style.visibility = "hidden";
+  const dx = toRect.left - fromRect.left;
+  const dy = toRect.top - fromRect.top;
+  const flight = ghost.animate(
+    [
+      { transform: "translate(0, 0) rotate(0deg)" },
+      { transform: `translate(${dx / 2}px, ${dy / 2 - 70}px) rotate(${dx >= 0 ? 200 : -200}deg)`, offset: 0.5 },
+      { transform: `translate(${dx}px, ${dy}px) rotate(360deg)` },
+    ],
+    { duration: 650, easing: "cubic-bezier(.45,.05,.4,1)" },
+  );
+  flight.onfinish = () => {
+    ghost.remove();
+    toHat.style.visibility = "";
+  };
 }
 
 function gameScreen() {
+  const built = ensureLayout();
   const { sides, mode, over } = match;
+  const { me, left, right } = boardSides();
   const status = sides.map((side) => (side.board ? arena.call("status", side.board) : null));
-  const me = mode === "bvb" ? null : match.viewer;
 
-  let banner = "";
-  if (over) {
-    const text =
-      over.forfeit != null
-        ? `${th("forfeit", { name: sides[over.forfeit].name, reason: over.reason })}<br>${th("winner", { name: sides[over.winner].name })}`
-        : th("winner", { name: sides[over.winner].name });
-    banner = `<div class="banner">${text}
-      <div class="buttons"><button id="again" class="primary">${th("play_again")}</button>
-      <button id="menu">${th("back_menu")}</button></div></div>`;
-  } else if (match.attacker != null) {
-    const attacker = sides[match.attacker];
-    banner =
-      attacker.kind === "human" && match.attacker === me && !match.locked
-        ? `<div class="turn mine">${th("turn_you")}</div>`
-        : `<div class="turn">${th("turn_of", { name: `${attacker.icon} ${attacker.name}` })}</div>`;
+  // Names above the boards: the player who shoots next wears the hat.
+  const active = over ? over.winner : match.attacker;
+  const plates = { [left]: app.querySelector("#plate-left"), [right]: app.querySelector("#plate-right") };
+  const previous = layout.active;
+  const fromRect = previous != null && previous !== active ? plates[previous].querySelector(".hat")?.getBoundingClientRect() : null;
+  for (const side of [left, right]) {
+    const caption = me != null ? th(side === me ? "your_fleet" : "enemy_waters") : th("fleet_short");
+    plates[side].innerHTML = plateHtml(sides[side], caption, side === active);
+    plates[side].classList.toggle("active", side === active);
   }
-
-  // Left: the viewer's own fleet (or side 0 for spectators). Right: the other side.
-  const left = me ?? 0;
-  const right = 1 - left;
-  const leftTitle = me != null ? th("your_fleet") : th("fleet_of", { name: `${sides[0].icon} ${sides[0].name}` });
-  const rightTitle =
-    me != null ? th("enemy_waters") : th("fleet_of", { name: `${sides[1].icon} ${sides[1].name}` });
-  const log = match.log
-    .slice(-10)
-    .reverse()
-    .map((entry) => `<li>${th(entry.key, entry.vars)}</li>`)
-    .join("");
+  if (fromRect && active != null) flyHat(fromRect, plates[active].querySelector(".hat"));
+  layout.active = active;
 
   // X-ray: the heat map a bot shot from last time (its optional last_info), drawn over the
   // board it is attacking. Only bots that publish a "heatmap" have one.
@@ -649,69 +821,102 @@ function gameScreen() {
     const attacker = sides[1 - d];
     return match.xray && !over && attacker.kind === "bot" ? attacker.lastInfo?.heatmap ?? null : null;
   };
-  const hasBot = sides.some((side) => side.kind === "bot");
-  const xrayNames = sides.filter((side) => side.kind === "bot" && side.lastInfo?.heatmap).map((side) => side.name);
-  const xray = hasBot
-    ? `<label class="check"><input type="checkbox" id="xray"${match.xray ? " checked" : ""}> ${th("xray")}</label>
-       ${match.xray ? `<p class="help">${xrayNames.length ? th("xray_help", { names: xrayNames.join(", ") }) : th("xray_none")}</p>` : ""}`
-    : "";
-
-  app.innerHTML = `
-    <section class="game">
-      ${banner}
-      <div class="boards">
-        ${status[left] ? boardPanel("board-left", leftTitle, status[left], `· ${th("shots")}: ${match.shots[right]}`) : ""}
-        ${status[right] ? boardPanel("board-right", rightTitle, status[right], `· ${th("shots")}: ${match.shots[left]}`) : ""}
-      </div>
-      <div class="game-side">
-        <label class="check"><input type="checkbox" id="hints"${match.hints ? " checked" : ""}> ${th("hints")}</label>
-        ${xray}
-        <ol class="log">${log}</ol>
-        ${over ? "" : `<button id="abandon">${th("abandon")}</button>`}
-      </div>
-    </section>`;
+  const freshFor = (d) => (match.fresh?.side === d ? match.fresh : null);
 
   if (status[left]) {
     renderBoard(app.querySelector("#board-left"), {
       size: match.size,
       view: status[left].view,
       fleet: status[left].fleet,
+      theme: "light",
       heat: heatOn(left),
       last: match.last[left],
+      fresh: freshFor(left),
     });
   }
   if (status[right]) {
-    const myTurn = !over && !match.locked && me != null && match.attacker === me;
+    const myTurn = !over && !match.locked && !match.busy && me != null && match.attacker === me;
     renderBoard(app.querySelector("#board-right"), {
       size: match.size,
       view: status[right].view,
       fleet: me == null || over ? status[right].fleet : null,
+      sunk: status[right].sunk,
+      theme: "dark",
       hints: match.hints && me != null ? status[right].hints : null,
       heat: heatOn(right),
       last: match.last[right],
+      fresh: freshFor(right),
       clickable: myTurn,
+      crosshair: myTurn,
       onClick: (r, c) => humanShot(r, c, status[right].view),
     });
   }
+  for (const [side, id] of [
+    [left, "#afloat-left"],
+    [right, "#afloat-right"],
+  ]) {
+    const box = app.querySelector(id);
+    if (!status[side]) {
+      box.innerHTML = "";
+      continue;
+    }
+    const theme = side === left ? "light" : "dark";
+    box.innerHTML = `<span class="afloat-label">${th("afloat")}</span>
+      <span class="afloat-ships">${status[side].view.remaining.map((n) => miniShip(n, theme)).join("")}</span>
+      <span class="shots-count">🎯 ${match.shots[1 - side]}</span>`;
+  }
 
-  app.querySelector("#hints").addEventListener("change", (event) => {
+  // Controls and the ship's log (the log is a record, the parrot does the talking).
+  const hasBot = sides.some((side) => side.kind === "bot");
+  const xrayNames = sides.filter((side) => side.kind === "bot" && side.lastInfo?.heatmap).map((side) => side.name);
+  const log = match.log
+    .slice()
+    .reverse()
+    .map((entry) => `<li>${th(entry.key, entry.vars)}</li>`)
+    .join("");
+  const sidePanel = app.querySelector("#game-side");
+  sidePanel.innerHTML = `
+    <div class="controls">
+      <label class="toggle"><input type="checkbox" id="hints"${match.hints ? " checked" : ""}> ${th("hints")}</label>
+      ${hasBot ? `<label class="toggle"><input type="checkbox" id="xray"${match.xray ? " checked" : ""}> ${th("xray")}</label>` : ""}
+      <span class="grow"></span>
+      ${
+        over
+          ? `<button id="celebrate">${th("end_replay")}</button>
+             <button id="again" class="primary">${th("play_again")}</button>
+             <button id="menu">${th("back_menu")}</button>`
+          : `<button id="abandon">${th("abandon")}</button>`
+      }
+    </div>
+    ${match.xray && hasBot ? `<p class="help">${xrayNames.length ? th("xray_help", { names: xrayNames.join(", ") }) : th("xray_none")}</p>` : ""}
+    <details class="log"${layout.logOpen ? " open" : ""}><summary>📜 ${th("log_title")}</summary><ol>${log}</ol></details>`;
+
+  sidePanel.querySelector("#hints").addEventListener("change", (event) => {
     match.hints = event.target.checked;
     gameScreen();
   });
-  app.querySelector("#xray")?.addEventListener("change", (event) => {
+  sidePanel.querySelector("#xray")?.addEventListener("change", (event) => {
     match.xray = event.target.checked;
     gameScreen();
   });
-  app.querySelector("#abandon")?.addEventListener("click", () => {
+  sidePanel.querySelector(".log").addEventListener("toggle", (event) => {
+    if (layout) layout.logOpen = event.target.open;
+  });
+  sidePanel.querySelector("#abandon")?.addEventListener("click", () => {
     stopMatch();
+    leaveGame();
     match = null;
     show(menuScreen);
   });
-  app.querySelector("#again")?.addEventListener("click", startMatch);
-  app.querySelector("#menu")?.addEventListener("click", () => {
+  sidePanel.querySelector("#celebrate")?.addEventListener("click", () => showEnd(match));
+  sidePanel.querySelector("#again")?.addEventListener("click", startMatch);
+  sidePanel.querySelector("#menu")?.addEventListener("click", () => {
+    leaveGame();
     match = null;
     show(menuScreen);
   });
+
+  if (built && !over && match.attacker != null && !match.locked) sayTurn();
 }
 
 // --- boot -------------------------------------------------------------------------------
@@ -734,6 +939,7 @@ async function boot() {
     for (const key of ["opponent", "botA", "botB"]) {
       if (!names.includes(settings[key])) settings[key] = names[names.length - 1];
     }
+    for (const src of ["img/pirate-happy.webp", "img/pirate-sad.webp"]) new Image().src = src; // end screens
     show(menuScreen);
   } catch (error) {
     console.error(error);

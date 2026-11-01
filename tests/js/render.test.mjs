@@ -8,7 +8,7 @@ import { leaderboardHtml } from "../../web/js/leaderboard.js";
 
 function fakeContainer() {
   return {
-    classList: { add() {} },
+    classList: { add() {}, remove() {}, toggle() {} },
     style: { setProperty() {} },
     innerHTML: "",
     addEventListener() {},
@@ -16,6 +16,7 @@ function fakeContainer() {
 }
 
 const count = (html, needle) => html.split(needle).length - 1;
+const cellCount = (html) => count(html, 'class="cell ') + count(html, 'class="cell"');
 
 test("esc() neutralises HTML", () => {
   assert.equal(esc(`<img src=x onerror="a">&'`), "&lt;img src=x onerror=&quot;a&quot;&gt;&amp;&#39;");
@@ -29,12 +30,37 @@ test("renderBoard draws size² cells with their states", () => {
   cells[2][2] = 3; // sunk
   const box = fakeContainer();
   renderBoard(box, { size, view: { size, cells, remaining: [2] }, clickable: true });
-  assert.equal(count(box.innerHTML, 'class="cell'), size * size);
-  assert.equal(count(box.innerHTML, " miss"), 1);
-  assert.equal(count(box.innerHTML, " hit"), 1);
-  assert.equal(count(box.innerHTML, " sunk"), 1);
+  assert.equal(cellCount(box.innerHTML), size * size);
+  assert.equal(count(box.innerHTML, "cell miss"), 1);
+  assert.equal(count(box.innerHTML, "cell hit"), 1);
+  assert.equal(count(box.innerHTML, "cell sunk"), 1);
+  assert.equal(count(box.innerHTML, 'class="flame"'), 1); // fire only where a ship is hit
   assert.equal(count(box.innerHTML, " clickable"), size * size - 3); // only unknown cells
-  assert.equal(box.style.gridTemplateColumns, "repeat(5, var(--cell))");
+  assert.match(box.innerHTML, /grid-template-columns:repeat\(4, var\(--cell\)\)/);
+  assert.doesNotMatch(box.innerHTML, /class="label"/); // no coordinates on the board
+});
+
+test("ships are drawn whole, sunk ones marked, the fresh sink animated", () => {
+  const size = 5;
+  const cells = Array.from({ length: size }, () => Array(size).fill(0));
+  cells[0][0] = 3;
+  cells[0][1] = 3; // a sunk 2-ship
+  cells[2][4] = 2; // a hit on a vertical 3-ship
+  const fleet = [
+    [[0, 0], [0, 1]],
+    [[2, 4], [3, 4], [4, 4]],
+  ];
+  const box = fakeContainer();
+  renderBoard(box, { size, view: { size, cells, remaining: [3] }, fleet, fresh: { cell: [0, 1], outcome: "sunk" } });
+  assert.equal(count(box.innerHTML, 'class="ship '), 2);
+  assert.match(box.innerHTML, /ship horizontal sunk sinking" style="grid-row:1;grid-column:1 \/ span 2"/);
+  assert.match(box.innerHTML, /ship vertical afloat" style="grid-row:3 \/ span 3;grid-column:5"/);
+
+  // The enemy board shows only sunk ships, never the others.
+  const enemy = fakeContainer();
+  renderBoard(enemy, { size, view: { size, cells, remaining: [3] }, sunk: [fleet[0]], crosshair: true, clickable: true });
+  assert.equal(count(enemy.innerHTML, 'class="ship '), 1);
+  assert.match(enemy.innerHTML, /class="crosshair"/);
 });
 
 test("renderBoard shades a heat map only on unknown cells", () => {

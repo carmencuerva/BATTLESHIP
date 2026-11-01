@@ -193,15 +193,19 @@ def status(board: str) -> str:
 
     ``view`` is what the attacker sees, ``hints`` marks certain water for the attacker,
     ``fleet`` lists ship cells (for the owner's own board or the end-of-game reveal),
-    ``terminal`` is True once every ship is sunk.
+    ``sunk`` lists the cells of every sunk ship (public knowledge: the attacker may draw
+    them), ``terminal`` is True once every ship is sunk.
     """
     board_ = _in(board)
     view = game.view_for_attacker(board_)
+    cells = view["cells"]
+    sunk = [ship for ship in board_["ships"] if all(cells[r][c] == game.SUNK for r, c in ship)]
     return _out(
         {
             "view": view,
             "hints": _hints(view),
             "fleet": board_["ships"],
+            "sunk": sunk,
             "terminal": game.is_terminal(board_),
         }
     )

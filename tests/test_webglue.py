@@ -105,6 +105,7 @@ def test_status_hints_mark_certain_water():
     for r, c in [(1, 1), (1, 3)]:  # diagonal to the hit
         assert hints[r][c] == 1
     assert hints[0][3] == 0 and hints[1][2] == 0  # in line with the hit: could be ship
+    assert status["sunk"] == [[[8, 0], [8, 1]]]  # only the sunk ship, never the others
     assert status["terminal"] is False
 
 
