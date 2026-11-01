@@ -504,7 +504,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     output = args.output or args.root / "results" / "leaderboard.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        json.dumps(leaderboard, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(leaderboard, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
     if not args.quiet:
         _print_table(leaderboard)

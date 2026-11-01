@@ -10,3 +10,4 @@ build/
 .ruff_cache/
 site/
 web/py.zip
+web/leaderboard.json
