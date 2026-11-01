@@ -1,0 +1,73 @@
+# 🚢 Battleship Arena
+
+[![tests](https://github.com/carmencuerva/BATTLESHIP/actions/workflows/tests.yml/badge.svg)](https://github.com/carmencuerva/BATTLESHIP/actions/workflows/tests.yml)
+[![tournament](https://github.com/carmencuerva/BATTLESHIP/actions/workflows/tournament.yml/badge.svg)](https://github.com/carmencuerva/BATTLESHIP/actions/workflows/tournament.yml)
+[![pages](https://github.com/carmencuerva/BATTLESHIP/actions/workflows/pages.yml/badge.svg)](https://carmencuerva.github.io/BATTLESHIP/)
+[![licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
+
+*[Read in English](README.md)*
+
+Battleship Arena incluye:
+
+- un motor de Hundir la flota;
+- una API mínima para escribir bots;
+- un torneo automático que los clasifica;
+- una web para jugar contra ellos.
+
+Las reglas y todos los bots se escriben **una sola vez, en Python**. El mismo código juega
+el torneo en la CI y la partida en tu navegador, gracias a [Pyodide](https://pyodide.org).
+
+**▶ Jugar: <https://carmencuerva.github.io/BATTLESHIP/>** · **📖 Documentación:
+<https://carmencuerva.github.io/BATTLESHIP/docs/es/>**
+
+## Las reglas en un párrafo
+
+El tablero es de 10×10 y la flota es 5, 4, 3, 3, 2; ambos se pueden configurar. Los
+barcos no pueden tocarse, ni siquiera en diagonal. Si tocas o hundes, vuelves a disparar.
+Al hundir un barco se anuncia su longitud. Gana quien hunda primero toda la flota enemiga.
+
+## Primeros pasos
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+pytest                           # tests
+battleship-tournament            # liguilla → results/leaderboard.json
+python scripts/build_web.py      # empaqueta el Python para el navegador
+python -m http.server 8000 --directory web   # juega en http://localhost:8000
+```
+
+## Escribe tu propio bot
+
+1. Crea `players/custom/mi_bot.py` con una subclase de `battleship.player.Player`.
+   Necesita `get_name`, `get_authors`, `choose_placement` y `choose_shot`.
+2. Añádelo a `players/custom/players.yaml`.
+3. Ejecuta `python scripts/check_players.py` y abre un pull request.
+
+La guía completa está en [Escribe un bot](docs/write-a-bot.es.md). Mira también
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Bots incluidos
+
+| bot | estrategia |
+|-----|------------|
+| 🎲 random | dispara al azar |
+| 🐣 easy | recorre el tablero fila a fila |
+| 🎯 medium | busca en damero y luego remata cada barco que toca |
+| 🧠 hard | dispara a la casilla más probable según todas las posiciones legales de los barcos; esconde su flota donde menos miran los cazadores |
+
+## Estructura del repositorio
+
+| ruta | qué |
+|------|-----|
+| `src/battleship/` | motor (`game.py`), API `Player`, manifiestos y registro, estrategias, torneo, Elo |
+| `players/` | jugadores `builtin/` y `custom/`, cada carpeta con su manifiesto `players.yaml` |
+| `web/` | la página estática y `webglue.py`, el puente JSON con Python |
+| `scripts/` | `build_web.py` (genera `web/py.zip`) y `check_players.py` (valida los bots enviados) |
+| `docs/` | documentación bilingüe con MkDocs |
+| `tests/` | tests de pytest y de JavaScript (`tests/js`) |
+
+## Licencia
+
+[MIT](LICENSE).

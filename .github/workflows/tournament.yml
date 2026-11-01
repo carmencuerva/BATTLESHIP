@@ -1,0 +1,40 @@
+name: tournament
+
+# Replays the official tournament whenever the engine or the players change on main and
+# commits results/leaderboard.json if the standings moved.
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "players/**", "pyproject.toml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tournament
+  cancel-in-progress: true
+
+jobs:
+  tournament:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install .
+      - run: battleship-tournament
+      - name: Commit the leaderboard if the results changed
+        run: |
+          # generated_at changes on every run; ignore it when deciding whether to commit.
+          if git diff --quiet -I '"generated_at"' -- results/leaderboard.json; then
+            echo "standings unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/leaderboard.json
+          git commit -m "Update leaderboard"
+          git push

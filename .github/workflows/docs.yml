@@ -1,0 +1,21 @@
+name: docs
+
+# Checks that the documentation builds without warnings (it is published by pages.yml).
+
+on:
+  pull_request:
+    paths: ["docs/**", "mkdocs.yml"]
+  push:
+    paths: ["docs/**", "mkdocs.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install ".[docs]"
+      - run: mkdocs build --strict

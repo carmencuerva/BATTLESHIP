@@ -161,6 +161,8 @@ function aboutScreen() {
       <h2>${th("about_title")}</h2>
       <p>${th("about_body")}</p>
       <p>${th("rules_short")}</p>
+      <p><a href="${getLang() === "es" ? "docs/es/" : "docs/"}">${th("docs_link")}</a> ·
+        <a href="https://github.com/carmencuerva/BATTLESHIP">GitHub</a></p>
       <ul class="players">${players
         .map((p) => `<li>${esc(p.icon)} <b>${esc(p.name)}</b> — ${esc(p.description)} <small>(${esc(p.authors.join(", "))})</small></li>`)
         .join("")}</ul>

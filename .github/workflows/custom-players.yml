@@ -1,0 +1,26 @@
+name: custom-players
+
+# Every pull request that adds or changes a player must load cleanly and survive a short
+# round-robin without a single forfeit (see scripts/check_players.py).
+
+on:
+  pull_request:
+    paths: ["players/**"]
+  push:
+    paths: ["players/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install .
+      - run: python scripts/check_players.py --games 4

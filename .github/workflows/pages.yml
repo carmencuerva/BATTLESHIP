@@ -1,0 +1,47 @@
+name: pages
+
+# Publishes the playable page and the documentation to GitHub Pages:
+#   /       the game (web/ + py.zip + a freshly played leaderboard.json)
+#   /docs/  the bilingual documentation (MkDocs)
+# One-time setup: Settings -> Pages -> Source: GitHub Actions.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install ".[docs]"
+      - run: battleship-tournament --quiet
+      - run: python scripts/build_web.py
+      - run: mkdocs build --strict --site-dir web/docs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

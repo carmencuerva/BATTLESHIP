@@ -1,0 +1,50 @@
+site_name: Battleship Arena
+site_description: Battleship engine, bot API and automatic tournament. The same Python runs in CI and in your browser.
+repo_url: https://github.com/carmencuerva/BATTLESHIP
+repo_name: carmencuerva/BATTLESHIP
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: blue
+    accent: light blue
+  features:
+    - navigation.sections
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: suffix
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+        - locale: es
+          name: Español
+          build: true
+          nav_translations:
+            Home: Inicio
+            Rules: Reglas
+            Write a bot: Escribe un bot
+            Tournament: Torneo
+            Architecture: Arquitectura
+
+nav:
+  - Home: index.md
+  - Rules: rules.md
+  - Write a bot: write-a-bot.md
+  - Tournament: tournament.md
+  - Architecture: architecture.md

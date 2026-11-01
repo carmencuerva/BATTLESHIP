@@ -64,6 +64,7 @@ export const STRINGS = {
       "The rules and every bot are written once, in Python. That same code runs the " +
       "tournament in CI and runs here in your browser thanks to Pyodide. Bots only ever " +
       "see what an attacker may know: the shots so far and which ship lengths are still afloat.",
+    docs_link: "Documentation: rules and how to write your own bot",
     nav_tournament: "Tournament",
     nav_ranking: "Ranking",
     confirm_leave: "Leave the game in progress?",
@@ -169,6 +170,7 @@ export const STRINGS = {
       "juega el torneo en la CI y se ejecuta aquí, en tu navegador, gracias a Pyodide. Los " +
       "bots solo ven lo que un atacante puede saber: los disparos hechos y qué longitudes " +
       "siguen a flote.",
+    docs_link: "Documentación: reglas y cómo escribir tu propio bot",
     nav_tournament: "Torneo",
     nav_ranking: "Clasificación",
     confirm_leave: "¿Salir de la partida en curso?",

@@ -107,6 +107,10 @@ main {
   margin-top: 0;
 }
 
+a {
+  color: var(--accent);
+}
+
 .error {
   color: #ff8f8f;
   min-height: 1.2em;
