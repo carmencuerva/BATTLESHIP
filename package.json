@@ -1,0 +1,13 @@
+{
+  "name": "battleship-arena-web",
+  "private": true,
+  "type": "module",
+  "description": "JavaScript tests for the web page; the game itself is Python (see pyproject.toml).",
+  "scripts": {
+    "test": "node --test tests/js/*.test.mjs",
+    "smoke": "node tests/js/pyodide_smoke.mjs"
+  },
+  "devDependencies": {
+    "pyodide": "0.27.2"
+  }
+}

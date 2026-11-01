@@ -15,18 +15,22 @@ import random
 from pathlib import Path
 from typing import Any
 
-from battleship import game
+from battleship import game, tournament
 from battleship.player import Player
-from battleship.registry import default_manifests, load_players
+from battleship.registry import PlayerInfo, default_manifests, load_players
 
 # Inside py.zip, players/ sits next to this file; in the repository it is one level up.
 ROOT = Path(__file__).resolve().parent
 if not (ROOT / "players").is_dir():
     ROOT = ROOT.parent
 
-_classes: dict[str, type[Player]] = {}
+_infos: dict[str, PlayerInfo] = {}
 _bots: dict[int, Player] = {}
 _next_handle = 1
+
+# The browser cannot kill a hung bot and Python runs slower there, so budgets are generous.
+WEB_TIME_BUDGET = 30.0
+WEB_BUILD_BUDGET = 10.0
 
 
 def _out(value: Any) -> str:
@@ -45,15 +49,19 @@ def defaults() -> str:
     return _out({"size": game.DEFAULT_SIZE, "fleet": list(game.DEFAULT_FLEET)})
 
 
-def check_fleet(size: str, fleet: str) -> str:
-    """``{"ok", "reason"}`` for a custom board size and fleet (tries a real placement)."""
-    size_, fleet_ = _in(size), _in(fleet)
-    reason = game.validate_fleet(size_, fleet_)
+def _fleet_problem(size: Any, fleet: Any) -> str | None:
+    reason = game.validate_fleet(size, fleet)
     if not reason:
         try:
-            game.random_placement(size_, fleet_, random.Random(0), max_attempts=200)
+            game.random_placement(size, fleet, random.Random(0), max_attempts=200)
         except ValueError as exc:
             reason = str(exc)
+    return reason
+
+
+def check_fleet(size: str, fleet: str) -> str:
+    """``{"ok", "reason"}`` for a custom board size and fleet (tries a real placement)."""
+    reason = _fleet_problem(_in(size), _in(fleet))
     return _out({"ok": reason is None, "reason": reason})
 
 
@@ -61,21 +69,25 @@ def list_players() -> str:
     """Identity of every admitted player (builtin first), loading them on first use."""
     rejected: list[dict[str, str]] = []
     players = load_players(default_manifests(ROOT), rejected)
-    _classes.clear()
-    _classes.update({p.name: p.cls for p in players})
+    _infos.clear()
+    _infos.update({p.name: p for p in players})
     return _out({"players": [p.to_json() for p in players], "rejected": rejected})
+
+
+def _info(name: str) -> PlayerInfo | None:
+    if not _infos:
+        list_players()
+    return _infos.get(name)
 
 
 def create_bot(name: str, seed: str) -> str:
     """``{"handle"}`` of a new bot, or ``{"error"}`` if it cannot be built."""
     global _next_handle
-    if not _classes:
-        list_players()
-    cls = _classes.get(_in(name))
-    if cls is None:
+    info = _info(_in(name))
+    if info is None:
         return _out({"error": f"unknown player {_in(name)!r}"})
     try:
-        bot = cls.create(_in(seed))
+        bot = info.cls.create(_in(seed))
         if not isinstance(bot, Player):
             raise TypeError(f"create() returned {type(bot).__name__}")
     except Exception as exc:
@@ -217,3 +229,78 @@ def shoot(board: str, shot: str, attacker: str) -> str:
             "next": game.next_attacker(_in(attacker), result),
         }
     )
+
+
+# --- tournament ------------------------------------------------------------------------------
+# The same schedule, game loop and standings as the CI tournament (battleship.tournament),
+# driven one game at a time so the page can redraw its progress between games.
+
+
+def _config(config: dict[str, Any]) -> tournament.Config:
+    return tournament.Config(
+        format=config.get("format", "league"),
+        games_per_pair=config["games_per_pair"],
+        seed=config.get("seed", 0),
+        size=config.get("size", game.DEFAULT_SIZE),
+        fleet=tuple(config.get("fleet", game.DEFAULT_FLEET)),
+        time_budget=WEB_TIME_BUDGET,
+        build_budget=WEB_BUILD_BUDGET,
+        subprocess=False,
+        jobs=1,
+    )
+
+
+def _entrants(names: list[str]) -> list[PlayerInfo]:
+    infos = []
+    for name in sorted(set(names)):
+        info = _info(name)
+        if info is None:
+            raise ValueError(f"unknown player {name!r}")
+        infos.append(info)
+    return infos
+
+
+def tournament_plan(config: str) -> str:
+    """Every game of a round-robin between ``config["players"]``.
+
+    ``config`` holds ``players`` (names), ``games_per_pair`` and optionally ``format``,
+    ``seed``, ``size`` and ``fleet``. Returns ``{"players": [names in table order],
+    "games": [[i, j, spec], ...]}`` or ``{"error"}``.
+    """
+    config_ = _in(config)
+    try:
+        entrants = _entrants(config_["players"])
+        if len(entrants) < 2:
+            raise ValueError("pick at least 2 players")
+        if config_.get("format", "league") not in tournament.FORMATS:
+            raise ValueError(f"unknown format {config_['format']!r}")
+        settings = _config(config_)
+        reason = _fleet_problem(settings.size, list(settings.fleet))
+        if reason:
+            raise ValueError(reason)
+        if settings.games_per_pair < 1:
+            raise ValueError("games per pair must be at least 1")
+    except (KeyError, TypeError, ValueError) as exc:
+        return _out({"error": str(exc)})
+    games = tournament.schedule(entrants, settings)
+    return _out({"players": [p.name for p in entrants], "games": [list(g) for g in games]})
+
+
+def tournament_game(names: str, spec: str) -> str:
+    """Play one scheduled game in-process; returns the game record (see ``run_game``)."""
+    names_ = _in(names)
+    classes = []
+    for name in names_:
+        info = _info(name)
+        if info is None:
+            return _out({"error": f"unknown player {name!r}"})
+        classes.append(info.cls)
+    return _out(tournament.run_game(classes, _in(spec)))
+
+
+def tournament_standings(config: str, games: str, records: str) -> str:
+    """The leaderboard (same shape as ``results/leaderboard.json``) of a finished plan."""
+    config_ = _in(config)
+    entrants = _entrants(config_["players"])
+    games_ = [tuple(g) for g in _in(games)]
+    return _out(tournament.standings(entrants, games_, _in(records), _config(config_)))

@@ -3,7 +3,9 @@
 
 import { startArena } from "../pyodide-bootstrap.js";
 import { coord, renderBoard, UNKNOWN } from "./board.js";
+import { esc, th } from "./html.js";
 import { getLang, setLang, t } from "./i18n.js";
+import { leaderboardHtml } from "./leaderboard.js";
 
 const app = document.getElementById("app");
 const SPEEDS = { slow: 900, normal: 400, fast: 60 };
@@ -12,7 +14,10 @@ let arena = null;
 let players = [];
 let current = () => {}; // re-renders the visible screen (e.g. after a language change)
 let keyHandler = null;
+let screen = 0; // bumped by show(); long jobs stop when the screen they started on is gone
 let match = null;
+let tour = null; // state of the tournament screen
+let ranking = null; // {status: "loading" | "ok" | "missing", data}
 const settings = {
   mode: "hvb",
   opponent: "hard",
@@ -27,18 +32,6 @@ const settings = {
 
 // --- helpers ---------------------------------------------------------------------------
 
-const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-
-function esc(value) {
-  return String(value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
-}
-
-// t() with every variable HTML-escaped, for use inside innerHTML.
-function th(key, vars = {}) {
-  const safe = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, esc(v)]));
-  return t(key, safe);
-}
-
 function randomSeed() {
   return Math.floor(Math.random() * 2 ** 31);
 }
@@ -48,6 +41,7 @@ function playerByName(name) {
 }
 
 function show(render) {
+  screen += 1;
   current = render;
   keyHandler = null;
   render();
@@ -57,9 +51,15 @@ document.addEventListener("keydown", (event) => keyHandler?.(event));
 
 // --- header ----------------------------------------------------------------------------
 
+const NAV = {
+  "nav-play": ["nav_play", () => menuScreen],
+  "nav-tournament": ["nav_tournament", () => tournamentScreen],
+  "nav-ranking": ["nav_ranking", () => rankingScreen],
+  "nav-about": ["nav_about", () => aboutScreen],
+};
+
 function renderHeader() {
-  document.getElementById("nav-play").textContent = t("nav_play");
-  document.getElementById("nav-about").textContent = t("nav_about");
+  for (const [id, [key]] of Object.entries(NAV)) document.getElementById(id).textContent = t(key);
   document.getElementById("lang").textContent = getLang() === "es" ? "EN" : "ES";
 }
 
@@ -68,16 +68,15 @@ document.getElementById("lang").addEventListener("click", () => {
   renderHeader();
   current();
 });
-document.getElementById("nav-play").addEventListener("click", () => {
-  if (arena) {
+for (const [id, [, screenFn]] of Object.entries(NAV)) {
+  document.getElementById(id).addEventListener("click", () => {
+    if (!arena) return;
+    if (match && !match.over && !confirm(t("confirm_leave"))) return;
     stopMatch();
-    show(menuScreen);
-  }
-});
-document.getElementById("nav-about").addEventListener("click", () => {
-  if (match && !match.over) return; // do not leave a live game by accident
-  show(aboutScreen);
-});
+    match = null;
+    show(screenFn());
+  });
+}
 
 // --- menu ------------------------------------------------------------------------------
 
@@ -168,6 +167,144 @@ function aboutScreen() {
     </section>`;
 }
 
+// --- ranking (the CI tournament) -------------------------------------------------------
+
+function rankingScreen() {
+  let body;
+  if (!ranking || ranking.status === "loading") body = `<div class="spinner"></div>`;
+  else if (ranking.status === "missing") body = `<p class="help">${th("ranking_missing")}</p>`;
+  else body = leaderboardHtml(ranking.data);
+  app.innerHTML = `
+    <section class="panel">
+      <h2>${th("ranking_title")}</h2>
+      <p>${th("ranking_help")}</p>
+      ${body}
+    </section>`;
+  if (!ranking) loadRanking();
+}
+
+async function loadRanking() {
+  ranking = { status: "loading" };
+  try {
+    const response = await fetch("leaderboard.json", { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    ranking = { status: "ok", data: await response.json() };
+  } catch (error) {
+    console.warn("no leaderboard.json:", error);
+    ranking = { status: "missing" };
+  }
+  if (current === rankingScreen) rankingScreen();
+}
+
+// --- tournament in the browser ---------------------------------------------------------
+
+function tournamentScreen() {
+  if (!tour) {
+    tour = {
+      players: players.map((p) => p.name),
+      games: 10,
+      seed: 0,
+      format: "league",
+      status: "idle", // idle | running | stopped | done
+      done: 0,
+      total: 0,
+      result: null,
+      error: "",
+    };
+  }
+  const running = tour.status === "running";
+  const picks = players
+    .map(
+      (p) =>
+        `<label class="radio"><input type="checkbox" class="pick" value="${esc(p.name)}"` +
+        `${tour.players.includes(p.name) ? " checked" : ""}${running ? " disabled" : ""}> ` +
+        `${esc(p.icon)} ${esc(p.name)}</label>`,
+    )
+    .join("");
+  const format = (value) =>
+    `<option value="${value}"${tour.format === value ? " selected" : ""}>${th(`format_${value}`)}</option>`;
+  const dis = running ? " disabled" : "";
+
+  let status = "";
+  if (running || tour.status === "stopped") {
+    const pct = tour.total ? Math.round((100 * tour.done) / tour.total) : 0;
+    status = `
+      <p id="tour-progress">${th(running ? "tournament_progress" : "tournament_stopped", { done: tour.done, total: tour.total })}</p>
+      <progress id="tour-bar" max="100" value="${pct}"></progress>`;
+  } else if (tour.status === "done") {
+    status = `<p>${th("tournament_done", { games: tour.total })}</p>${leaderboardHtml(tour.result)}`;
+  }
+
+  app.innerHTML = `
+    <section class="panel menu">
+      <h2>${th("tournament_title")}</h2>
+      <p class="help">${th("tournament_help", { size: settings.size, fleet: settings.fleet.join(",") })}</p>
+      <fieldset><legend>${th("tournament_players")}</legend>${picks}</fieldset>
+      <div class="fields">
+        <label>${th("games_per_pair")}<input id="tour-games" type="number" min="2" max="200" step="2" value="${tour.games}"${dis}></label>
+        <label>${th("seed")}<input id="tour-seed" type="number" min="0" value="${tour.seed}"${dis}></label>
+        <label>${th("format")}<select id="tour-format"${dis}>${format("league")}${format("simple")}</select></label>
+      </div>
+      ${running ? `<button id="tour-stop">${th("stop")}</button>` : `<button id="tour-run" class="primary">${th("run_tournament")}</button>`}
+      <p class="error">${esc(tour.error)}</p>
+      ${status}
+    </section>`;
+
+  app.querySelector("#tour-stop")?.addEventListener("click", () => {
+    tour.status = "stopped";
+  });
+  app.querySelector("#tour-run")?.addEventListener("click", () => {
+    tour.players = [...app.querySelectorAll(".pick:checked")].map((box) => box.value);
+    tour.games = Number(app.querySelector("#tour-games").value);
+    tour.seed = Number(app.querySelector("#tour-seed").value);
+    tour.format = app.querySelector("#tour-format").value;
+    runTournament();
+  });
+}
+
+async function runTournament() {
+  const config = {
+    players: tour.players,
+    games_per_pair: tour.games,
+    seed: tour.seed,
+    format: tour.format,
+    size: settings.size,
+    fleet: settings.fleet,
+  };
+  const plan = arena.call("tournament_plan", config);
+  if (plan.error) {
+    tour.error = plan.error;
+    tournamentScreen();
+    return;
+  }
+  Object.assign(tour, { status: "running", done: 0, total: plan.games.length, result: null, error: "" });
+  const mine = screen;
+  tournamentScreen();
+  const records = [];
+  for (const [i, j, spec] of plan.games) {
+    // Yield to the browser so the page stays responsive and the progress bar repaints.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (screen !== mine) {
+      tour.status = "stopped"; // the user went to another screen
+      return;
+    }
+    if (tour.status !== "running") {
+      tournamentScreen();
+      return;
+    }
+    records.push(arena.call("tournament_game", [plan.players[i], plan.players[j]], spec));
+    tour.done = records.length;
+    const pct = Math.round((100 * tour.done) / tour.total);
+    const bar = app.querySelector("#tour-bar");
+    if (bar) bar.value = pct;
+    const label = app.querySelector("#tour-progress");
+    if (label) label.textContent = t("tournament_progress", { done: tour.done, total: tour.total });
+  }
+  tour.result = arena.call("tournament_standings", config, plan.games, records);
+  tour.status = "done";
+  if (screen === mine) tournamentScreen();
+}
+
 // --- match setup -----------------------------------------------------------------------
 
 function stopMatch() {
@@ -212,6 +349,7 @@ function startMatch() {
     over: null,
     locked: false,
     hints: true,
+    xray: mode === "bvb",
     timer: null,
   };
 
@@ -503,6 +641,19 @@ function gameScreen() {
     .map((entry) => `<li>${th(entry.key, entry.vars)}</li>`)
     .join("");
 
+  // X-ray: the heat map a bot shot from last time (its optional last_info), drawn over the
+  // board it is attacking. Only bots that publish a "heatmap" have one.
+  const heatOn = (d) => {
+    const attacker = sides[1 - d];
+    return match.xray && !over && attacker.kind === "bot" ? attacker.lastInfo?.heatmap ?? null : null;
+  };
+  const hasBot = sides.some((side) => side.kind === "bot");
+  const xrayNames = sides.filter((side) => side.kind === "bot" && side.lastInfo?.heatmap).map((side) => side.name);
+  const xray = hasBot
+    ? `<label class="check"><input type="checkbox" id="xray"${match.xray ? " checked" : ""}> ${th("xray")}</label>
+       ${match.xray ? `<p class="help">${xrayNames.length ? th("xray_help", { names: xrayNames.join(", ") }) : th("xray_none")}</p>` : ""}`
+    : "";
+
   app.innerHTML = `
     <section class="game">
       ${banner}
@@ -512,6 +663,7 @@ function gameScreen() {
       </div>
       <div class="game-side">
         <label class="check"><input type="checkbox" id="hints"${match.hints ? " checked" : ""}> ${th("hints")}</label>
+        ${xray}
         <ol class="log">${log}</ol>
         ${over ? "" : `<button id="abandon">${th("abandon")}</button>`}
       </div>
@@ -522,6 +674,7 @@ function gameScreen() {
       size: match.size,
       view: status[left].view,
       fleet: status[left].fleet,
+      heat: heatOn(left),
       last: match.last[left],
     });
   }
@@ -532,6 +685,7 @@ function gameScreen() {
       view: status[right].view,
       fleet: me == null || over ? status[right].fleet : null,
       hints: match.hints && me != null ? status[right].hints : null,
+      heat: heatOn(right),
       last: match.last[right],
       clickable: myTurn,
       onClick: (r, c) => humanShot(r, c, status[right].view),
@@ -540,6 +694,10 @@ function gameScreen() {
 
   app.querySelector("#hints").addEventListener("change", (event) => {
     match.hints = event.target.checked;
+    gameScreen();
+  });
+  app.querySelector("#xray")?.addEventListener("change", (event) => {
+    match.xray = event.target.checked;
     gameScreen();
   });
   app.querySelector("#abandon")?.addEventListener("click", () => {

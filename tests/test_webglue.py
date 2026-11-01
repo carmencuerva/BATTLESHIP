@@ -6,6 +6,8 @@ import sys
 import pytest
 
 from battleship.game import DEFAULT_FLEET, DEFAULT_SIZE, HIT, SUNK, UNKNOWN
+from battleship.registry import default_manifests, load_players
+from battleship.tournament import Config, run_tournament
 
 from .conftest import ROOT
 
@@ -131,3 +133,36 @@ def test_full_human_vs_bot_game_through_the_glue():
     else:
         pytest.fail("game did not end")
     assert call("status", boards[1 - attacker])["terminal"]
+
+
+def run_web_tournament(config):
+    plan = call("tournament_plan", config)
+    records = [
+        call("tournament_game", [plan["players"][i], plan["players"][j]], spec)
+        for i, j, spec in plan["games"]
+    ]
+    return plan, call("tournament_standings", config, plan["games"], records)
+
+
+def test_web_tournament_matches_the_ci_tournament():
+    config = {"players": ["medium", "random", "easy"], "games_per_pair": 4, "seed": 7}
+    plan, board = run_web_tournament(config)
+    assert plan["players"] == ["easy", "medium", "random"]
+    assert len(plan["games"]) == 3 * 4
+
+    players = load_players(default_manifests(ROOT))
+    chosen = [p for p in players if p.name in config["players"]]
+    expected = run_tournament(chosen, Config(games_per_pair=4, seed=7, subprocess=False, jobs=1))
+    # Same games, same results; only the (generous) web time budgets differ.
+    assert board["standings"] == expected["standings"]
+    assert board["pairs"] == expected["pairs"]
+    assert board["config"]["time_budget"] == webglue.WEB_TIME_BUDGET
+
+
+def test_web_tournament_plan_errors():
+    assert "error" in call("tournament_plan", {"players": ["hard"], "games_per_pair": 2})
+    assert "error" in call("tournament_plan", {"players": ["hard", "x"], "games_per_pair": 2})
+    bad_fleet = {"players": ["hard", "easy"], "games_per_pair": 2, "size": 3, "fleet": [3, 3, 3]}
+    assert "error" in call("tournament_plan", bad_fleet)
+    no_games = {"players": ["hard", "easy"], "games_per_pair": 0}
+    assert "error" in call("tournament_plan", no_games)

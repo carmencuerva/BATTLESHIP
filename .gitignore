@@ -11,3 +11,5 @@ build/
 site/
 web/py.zip
 web/leaderboard.json
+web/docs/
+node_modules/

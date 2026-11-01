@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import copy
 import json
-import multiprocessing
 import random
 import sys
 import threading
@@ -24,9 +23,8 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from multiprocessing.connection import Connection
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from battleship import elo
 from battleship.game import (
@@ -44,6 +42,9 @@ from battleship.game import (
 from battleship.manifest import ManifestEntry
 from battleship.player import Player
 from battleship.registry import PlayerInfo, default_manifests, load_class, load_players
+
+if TYPE_CHECKING:  # multiprocessing is imported lazily: the browser (Pyodide) has no processes
+    from multiprocessing.connection import Connection
 
 FORFEIT_TIMEOUT = "forfeit_timeout"
 FORFEIT_ERROR = "forfeit_error"
@@ -217,6 +218,8 @@ def run_game_in_subprocess(entries: Sequence[ManifestEntry], spec: GameSpec) -> 
     message does not arrive within that time plus ``KILL_SLACK``, the bot forfeits. Stats
     of killed games (shots, hits) are lost and recorded as None.
     """
+    import multiprocessing
+
     ctx = multiprocessing.get_context("spawn")
     receiver, sender = ctx.Pipe(duplex=False)
     process = ctx.Process(target=_worker, args=(sender, list(entries), spec), daemon=True)

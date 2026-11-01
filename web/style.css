@@ -86,6 +86,7 @@ select {
 
 .top nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -353,4 +354,68 @@ main {
 .pass {
   text-align: center;
   padding: 50px 20px;
+}
+
+.check {
+  display: block;
+  margin: 4px 0;
+}
+
+/* ranking and tournament */
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 8px 0 16px;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--water-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+td.num,
+.cross th {
+  text-align: right;
+}
+
+td.strong {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+td.who small {
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.cross td.self {
+  background: var(--panel-2);
+}
+
+.cross th.who {
+  text-align: left;
+}
+
+progress {
+  width: 100%;
+  max-width: 420px;
+  height: 14px;
+  accent-color: var(--accent);
+}
+
+.rejected {
+  color: #ff8f8f;
 }
