@@ -89,3 +89,27 @@ test("the committed leaderboard renders every player, escaped", async () => {
   evil.standings[0].name = "<script>x</script>";
   assert.ok(!leaderboardHtml(evil).includes("<script>"));
 });
+
+test("a championship leaderboard shows its bracket and champion", () => {
+  const row = (name, rank) => ({
+    name, icon: "🚢", authors: ["x"], rank, elo: 1500, points: 0, played: 2, wins: 1, losses: 1,
+    draws: 0, forfeits: 0, forfeit_reasons: {}, wins_first: 1, wins_second: 0,
+    avg_shots_to_win: 40, hit_rate: 0.4,
+  });
+  const lb = {
+    format: "championship",
+    config: { games_per_pair: 2, size: 10, fleet: [5, 4], seed: 0 },
+    standings: [row("a", 1), row("b", 2)],
+    pairs: [{ a: "a", b: "b", wins_a: 1, wins_b: 1, draws: 0 }],
+    knockout: {
+      size: 2,
+      games_per_match: 2,
+      rounds: [{ name: "final", matches: [{ a: "a", b: "b", wins_a: 2, wins_b: 0, draws: 0, winner: "a" }] }],
+      champion: "a",
+    },
+  };
+  const html = leaderboardHtml(lb);
+  assert.equal(count(html, 'class="ko-match"'), 1);
+  assert.equal(count(html, "ko-side won"), 1);
+  assert.match(html, /🏆/);
+});

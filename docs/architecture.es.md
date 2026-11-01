@@ -46,10 +46,11 @@ JavaScript nunca decide nada del juego:
 
 - la legalidad, los resultados y de quién es el turno vienen de `shoot`;
 - las pistas de «agua segura» vienen de `status`;
-- la pantalla de torneo llama a `tournament_plan`, `tournament_game` y
-  `tournament_standings`. Usan el mismo `schedule`, `run_game` y `standings` que la línea
-  de comandos, así que un torneo en el navegador da la misma clasificación que la CI con
-  la misma configuración.
+- la pantalla de torneo pide a `tournament_next` las partidas que faltan (primero la liga
+  y después cada ronda eliminatoria de un campeonato), las juega con `tournament_game` y
+  obtiene la clasificación con `tournament_result`. Usan el mismo `next_games`, `run_game`
+  y `final_leaderboard` que la línea de comandos, así que un torneo en el navegador da la
+  misma clasificación que la CI con la misma configuración.
 
 A diferencia de la CI, el navegador no puede matar a un bot colgado. Por eso sus límites
 de tiempo son generosos (30 s por partida), y la página devuelve el control al navegador

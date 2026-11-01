@@ -44,9 +44,11 @@ JavaScript never decides anything about the game:
 
 - legality, results and whose turn it is all come from `shoot`;
 - the "certain water" hints come from `status`;
-- the tournament screen calls `tournament_plan`, `tournament_game` and
-  `tournament_standings`. These use the same `schedule`, `run_game` and `standings` as the
-  CLI, so a browser tournament gives the same standings as CI with the same settings.
+- the tournament screen asks `tournament_next` for the games still to play (league first,
+  then each knockout round of a championship), plays them with `tournament_game`, and
+  gets the leaderboard from `tournament_result`. These use the same `next_games`,
+  `run_game` and `final_leaderboard` as the CLI, so a browser tournament gives the same
+  standings as CI with the same settings.
 
 Unlike CI, the browser cannot kill a hung bot. Its time budgets are therefore generous
 (30 s per game), and the page yields to the browser between games.

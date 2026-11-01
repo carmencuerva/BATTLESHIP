@@ -1,6 +1,8 @@
 // The parrot: the game's commentator. Every gameplay message (turns, shot results, the end
 // of the game) is spoken through its comic speech bubble.
 
+import { sfx } from "./sound.js";
+
 const PARROT_SVG = `
 <svg viewBox="0 0 160 200" aria-hidden="true">
   <g class="perch">
@@ -78,6 +80,7 @@ export function createParrot(dock) {
     void bubble.offsetWidth; // restart the pop-in animation
     bubble.className = `bubble show mood-${msg.mood ?? "info"}`;
     bird.className = `parrot talking mood-${msg.mood ?? "info"}`;
+    sfx.squawk(msg.mood);
     clearTimeout(timers.hide);
     clearTimeout(timers.talk);
     timers.talk = setTimeout(() => bird.classList.remove("talking"), Math.min(1100, timing.life));

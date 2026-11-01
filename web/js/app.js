@@ -7,9 +7,10 @@ import { closeEndScreen, showEndScreen } from "./endscreen.js";
 import { bubbles, explode, launchMissile, splash } from "./fx.js";
 import { esc, th } from "./html.js";
 import { getLang, setLang, t } from "./i18n.js";
-import { leaderboardHtml } from "./leaderboard.js";
+import { leaderboardHtml, stageName } from "./leaderboard.js";
 import { createParrot } from "./parrot.js";
 import { miniShip } from "./ships.js";
+import { isMuted, setMuted, sfx } from "./sound.js";
 
 const app = document.getElementById("app");
 const SPEEDS = { slow: 900, normal: 400, fast: 60 };
@@ -65,8 +66,16 @@ const NAV = {
 function renderHeader() {
   for (const [id, [key]] of Object.entries(NAV)) document.getElementById(id).textContent = t(key);
   document.getElementById("lang").textContent = getLang() === "es" ? "EN" : "ES";
+  const sound = document.getElementById("sound");
+  sound.textContent = isMuted() ? "🔇" : "🔊";
+  sound.title = t(isMuted() ? "sound_on" : "sound_off");
+  sound.setAttribute("aria-pressed", String(!isMuted()));
 }
 
+document.getElementById("sound").addEventListener("click", () => {
+  setMuted(!isMuted());
+  renderHeader();
+});
 document.getElementById("lang").addEventListener("click", () => {
   setLang(getLang() === "es" ? "en" : "es");
   renderHeader();
@@ -210,9 +219,11 @@ function tournamentScreen() {
     tour = {
       players: players.map((p) => p.name),
       games: 10,
+      knockout: 6,
       seed: 0,
       format: "league",
       status: "idle", // idle | running | stopped | done
+      stage: "league",
       done: 0,
       total: 0,
       result: null,
@@ -236,7 +247,7 @@ function tournamentScreen() {
   if (running || tour.status === "stopped") {
     const pct = tour.total ? Math.round((100 * tour.done) / tour.total) : 0;
     status = `
-      <p id="tour-progress">${th(running ? "tournament_progress" : "tournament_stopped", { done: tour.done, total: tour.total })}</p>
+      <p id="tour-progress">${progressText()}</p>
       <progress id="tour-bar" max="100" value="${pct}"></progress>`;
   } else if (tour.status === "done") {
     status = `<p>${th("tournament_done", { games: tour.total })}</p>${leaderboardHtml(tour.result)}`;
@@ -250,7 +261,8 @@ function tournamentScreen() {
       <div class="fields">
         <label>${th("games_per_pair")}<input id="tour-games" type="number" min="2" max="200" step="2" value="${tour.games}"${dis}></label>
         <label>${th("seed")}<input id="tour-seed" type="number" min="0" value="${tour.seed}"${dis}></label>
-        <label>${th("format")}<select id="tour-format"${dis}>${format("league")}${format("simple")}</select></label>
+        <label>${th("format")}<select id="tour-format"${dis}>${format("league")}${format("simple")}${format("championship")}</select></label>
+        <label class="ko-field"${tour.format === "championship" ? "" : " hidden"}>${th("knockout_games")}<input id="tour-ko" type="number" min="2" max="100" step="2" value="${tour.knockout}"${dis}></label>
       </div>
       ${running ? `<button id="tour-stop">${th("stop")}</button>` : `<button id="tour-run" class="primary">${th("run_tournament")}</button>`}
       <p class="error">${esc(tour.error)}</p>
@@ -260,54 +272,69 @@ function tournamentScreen() {
   app.querySelector("#tour-stop")?.addEventListener("click", () => {
     tour.status = "stopped";
   });
+  app.querySelector("#tour-format").addEventListener("change", (event) => {
+    app.querySelector(".ko-field").hidden = event.target.value !== "championship";
+  });
   app.querySelector("#tour-run")?.addEventListener("click", () => {
     tour.players = [...app.querySelectorAll(".pick:checked")].map((box) => box.value);
     tour.games = Number(app.querySelector("#tour-games").value);
+    tour.knockout = Number(app.querySelector("#tour-ko").value);
     tour.seed = Number(app.querySelector("#tour-seed").value);
     tour.format = app.querySelector("#tour-format").value;
     runTournament();
   });
 }
 
+function progressText() {
+  const vars = { done: tour.done, total: tour.total, stage: stageName(tour.stage) };
+  return t(tour.status === "running" ? "tournament_progress" : "tournament_stopped", vars);
+}
+
+// Python decides every stage (league, then knockout rounds); this loop only asks for the
+// next games, plays them one by one and reports back.
 async function runTournament() {
   const config = {
     players: tour.players,
     games_per_pair: tour.games,
+    knockout_games: tour.knockout,
     seed: tour.seed,
     format: tour.format,
     size: settings.size,
     fleet: settings.fleet,
   };
-  const plan = arena.call("tournament_plan", config);
-  if (plan.error) {
-    tour.error = plan.error;
+  const played = [];
+  let step = arena.call("tournament_next", config, played);
+  if (step.error) {
+    tour.error = step.error;
     tournamentScreen();
     return;
   }
-  Object.assign(tour, { status: "running", done: 0, total: plan.games.length, result: null, error: "" });
+  Object.assign(tour, { status: "running", stage: step.stage, done: 0, total: step.total, result: null, error: "" });
   const mine = screen;
   tournamentScreen();
-  const records = [];
-  for (const [i, j, spec] of plan.games) {
-    // Yield to the browser so the page stays responsive and the progress bar repaints.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    if (screen !== mine) {
-      tour.status = "stopped"; // the user went to another screen
-      return;
+  while (!step.done) {
+    tour.stage = step.stage;
+    for (const [i, j, spec] of step.games) {
+      // Yield to the browser so the page stays responsive and the progress bar repaints.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (screen !== mine) {
+        tour.status = "stopped"; // the user went to another screen
+        return;
+      }
+      if (tour.status !== "running") {
+        tournamentScreen();
+        return;
+      }
+      played.push([i, j, spec, arena.call("tournament_game", [step.players[i], step.players[j]], spec)]);
+      tour.done = played.length;
+      const bar = app.querySelector("#tour-bar");
+      if (bar) bar.value = Math.round((100 * tour.done) / tour.total);
+      const label = app.querySelector("#tour-progress");
+      if (label) label.textContent = progressText();
     }
-    if (tour.status !== "running") {
-      tournamentScreen();
-      return;
-    }
-    records.push(arena.call("tournament_game", [plan.players[i], plan.players[j]], spec));
-    tour.done = records.length;
-    const pct = Math.round((100 * tour.done) / tour.total);
-    const bar = app.querySelector("#tour-bar");
-    if (bar) bar.value = pct;
-    const label = app.querySelector("#tour-progress");
-    if (label) label.textContent = t("tournament_progress", { done: tour.done, total: tour.total });
+    step = arena.call("tournament_next", config, played);
   }
-  tour.result = arena.call("tournament_standings", config, plan.games, records);
+  tour.result = arena.call("tournament_result", config, played);
   tour.status = "done";
   if (screen === mine) tournamentScreen();
 }
@@ -603,6 +630,7 @@ async function fire(shot) {
   if (target) lockBoard(target);
   if (target && origin) {
     const duration = m.sides[a].kind === "bot" ? MISSILE_MS[settings.speed] ?? MISSILE_MS.normal : HUMAN_MISSILE_MS;
+    sfx.launch();
     await launchMissile(origin.getBoundingClientRect(), cellRect(target, ...shot), duration);
   }
   if (match !== m) return; // the player left or restarted meanwhile
@@ -630,10 +658,18 @@ async function fire(shot) {
   const landed = boardEl(d);
   if (landed) {
     const rect = cellRect(landed, ...shot);
-    if (outcome === "miss") splash(rect);
-    else explode(rect, outcome === "sunk");
+    if (outcome === "miss") {
+      splash(rect);
+      sfx.splash();
+    } else {
+      explode(rect, outcome === "sunk");
+      sfx.explosion(outcome === "sunk");
+    }
     const sinking = landed.querySelector(".ship.sinking");
-    if (sinking) bubbles(sinking.getBoundingClientRect());
+    if (sinking) {
+      bubbles(sinking.getBoundingClientRect());
+      sfx.sink();
+    }
   }
   if (outcome === "miss") say("p_miss", {}, { mood: "miss" });
   else if (outcome === "hit") say("p_hit", {}, { mood: "hit" });

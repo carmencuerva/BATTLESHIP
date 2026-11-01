@@ -44,15 +44,29 @@ for (;;) {
 assert.ok(heatmaps > 0, "hard publishes its heat map for X-ray mode");
 console.log(`game: ${sides[attacker].name} won (${sides[0].shots} + ${sides[1].shots} shots)`);
 
-// A tiny tournament through the same functions as the Tournament screen.
-const config = { players: ["random", "easy", "hard"], games_per_pair: 2, seed: 1 };
-const plan = arena.call("tournament_plan", config);
-assert.equal(plan.error, undefined, plan.error);
-const records = plan.games.map(([i, j, spec]) =>
-  arena.call("tournament_game", [plan.players[i], plan.players[j]], spec),
-);
-const board = arena.call("tournament_standings", config, plan.games, records);
-assert.equal(board.standings.length, 3);
-assert.equal(board.standings.reduce((n, row) => n + row.played, 0), 2 * plan.games.length);
-console.log(`tournament: ${board.standings.map((row) => `${row.rank}. ${row.name} ${row.elo}`).join(" · ")}`);
+// A tiny championship through the same functions as the Tournament screen.
+const config = {
+  players: ["random", "easy", "medium", "hard"],
+  format: "championship",
+  games_per_pair: 2,
+  knockout_games: 2,
+  seed: 1,
+};
+const played = [];
+const stages = [];
+let step = arena.call("tournament_next", config, played);
+assert.equal(step.error, undefined, step.error);
+while (!step.done) {
+  stages.push(step.stage);
+  for (const [i, j, spec] of step.games) {
+    played.push([i, j, spec, arena.call("tournament_game", [step.players[i], step.players[j]], spec)]);
+  }
+  step = arena.call("tournament_next", config, played);
+}
+assert.deepEqual(stages, ["league", "semifinal", "final"]);
+assert.equal(played.length, step.total);
+const board = arena.call("tournament_result", config, played);
+assert.equal(board.standings.length, 4);
+assert.equal(board.standings[0].name, board.knockout.champion);
+console.log(`championship: ${board.standings.map((row) => `${row.rank}. ${row.name}`).join(" · ")}`);
 console.log("pyodide smoke test passed");

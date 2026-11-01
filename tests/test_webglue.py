@@ -2,6 +2,7 @@ import inspect
 import json
 import random
 import sys
+from dataclasses import replace
 
 import pytest
 
@@ -137,19 +138,24 @@ def test_full_human_vs_bot_game_through_the_glue():
 
 
 def run_web_tournament(config):
-    plan = call("tournament_plan", config)
-    records = [
-        call("tournament_game", [plan["players"][i], plan["players"][j]], spec)
-        for i, j, spec in plan["games"]
-    ]
-    return plan, call("tournament_standings", config, plan["games"], records)
+    """Drive the tournament like the page does: ask, play, send back, until done."""
+    played, stages = [], []
+    while True:
+        step = call("tournament_next", config, played)
+        if step.get("done"):
+            break
+        stages.append(step["stage"])
+        names = step["players"]
+        for i, j, spec in step["games"]:
+            played.append([i, j, spec, call("tournament_game", [names[i], names[j]], spec)])
+    assert len(played) == step["total"]
+    return stages, played, call("tournament_result", config, played)
 
 
 def test_web_tournament_matches_the_ci_tournament():
     config = {"players": ["medium", "random", "easy"], "games_per_pair": 4, "seed": 7}
-    plan, board = run_web_tournament(config)
-    assert plan["players"] == ["easy", "medium", "random"]
-    assert len(plan["games"]) == 3 * 4
+    stages, played, board = run_web_tournament(config)
+    assert stages == ["league"] and len(played) == 3 * 4
 
     players = load_players(default_manifests(ROOT))
     chosen = [p for p in players if p.name in config["players"]]
@@ -160,10 +166,25 @@ def test_web_tournament_matches_the_ci_tournament():
     assert board["config"]["time_budget"] == webglue.WEB_TIME_BUDGET
 
 
+def test_web_championship_matches_the_ci_championship():
+    names = ["medium", "random", "easy", "hard"]
+    config = {"players": names, "games_per_pair": 2, "knockout_games": 2, "seed": 3}
+    config["format"] = "championship"
+    stages, _, board = run_web_tournament(config)
+    assert stages == ["league", "semifinal", "final"]
+    chosen = [p for p in load_players(default_manifests(ROOT)) if p.name in names]
+    settings = Config(format="championship", games_per_pair=2, knockout_games=2, seed=3)
+    expected = run_tournament(chosen, replace(settings, subprocess=False, jobs=1))
+    assert board["knockout"] == expected["knockout"]
+    assert [r["name"] for r in board["standings"]] == [r["name"] for r in expected["standings"]]
+
+
 def test_web_tournament_plan_errors():
-    assert "error" in call("tournament_plan", {"players": ["hard"], "games_per_pair": 2})
-    assert "error" in call("tournament_plan", {"players": ["hard", "x"], "games_per_pair": 2})
+    plan = lambda config: call("tournament_next", config, [])  # noqa: E731
+    assert "error" in plan({"players": ["hard"], "games_per_pair": 2})
+    assert "error" in plan({"players": ["hard", "x"], "games_per_pair": 2})
+    assert "error" in plan({"players": ["hard", "easy"], "games_per_pair": 2, "format": "x"})
     bad_fleet = {"players": ["hard", "easy"], "games_per_pair": 2, "size": 3, "fleet": [3, 3, 3]}
-    assert "error" in call("tournament_plan", bad_fleet)
+    assert "error" in plan(bad_fleet)
     no_games = {"players": ["hard", "easy"], "games_per_pair": 0}
-    assert "error" in call("tournament_plan", no_games)
+    assert "error" in plan(no_games)

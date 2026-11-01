@@ -2,13 +2,20 @@
 // Pure presentation: every number here was computed in Python.
 
 import { esc, th } from "./html.js";
+import { t } from "./i18n.js";
+
+// "semifinal" -> "Semi-finals"; "round_of_16" -> "Round of 16".
+export function stageName(name) {
+  const round = /^round_of_(\d+)$/.exec(name ?? "");
+  return round ? t("stage_round_of", { n: round[1] }) : t(`stage_${name}`);
+}
 
 function percent(rate) {
   return rate == null ? "–" : `${(100 * rate).toFixed(1)}%`;
 }
 
 function standingsTable(lb) {
-  const primary = lb.format === "league" ? "elo" : "points";
+  const primary = lb.format === "simple" ? "points" : "elo";
   const rows = lb.standings
     .map((row) => {
       const reasons = Object.entries(row.forfeit_reasons || {})
@@ -65,6 +72,32 @@ function crossTable(lb) {
     <div class="table-wrap"><table class="cross"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+// The bracket: one column per round, each match with its score; the winner in bold.
+function knockoutHtml(lb) {
+  const ko = lb.knockout;
+  if (!ko) return "";
+  const icon = Object.fromEntries(lb.standings.map((row) => [row.name, row.icon]));
+  const side = (name, wins, winner) =>
+    `<div class="ko-side${name === winner ? " won" : ""}"><span>${esc(icon[name] ?? "")} ${esc(name)}</span><b>${wins}</b></div>`;
+  const rounds = ko.rounds
+    .map(
+      (round) => `
+        <div class="ko-round">
+          <h4>${esc(stageName(round.name))}</h4>
+          ${round.matches
+            .map((m) => `<div class="ko-match">${side(m.a, m.wins_a, m.winner)}${side(m.b, m.wins_b, m.winner)}</div>`)
+            .join("")}
+        </div>`,
+    )
+    .join("");
+  return `
+    <h3>${th("knockout_title")}</h3>
+    <div class="ko">${rounds}
+      <div class="ko-round ko-champion"><div class="trophy">🏆</div><b>${th("champion", { name: `${icon[ko.champion] ?? ""} ${ko.champion}` })}</b></div>
+    </div>
+    <p class="help">${th("knockout_tiebreak")}</p>`;
+}
+
 export function leaderboardHtml(lb) {
   const c = lb.config || {};
   const meta = th("ranking_meta", {
@@ -79,5 +112,5 @@ export function leaderboardHtml(lb) {
         .map((item) => `<li><code>${esc(item.source)}</code>: ${esc(item.error)}</li>`)
         .join("")}</ul>`
     : "";
-  return `<p class="help">${meta}${generated}</p>${standingsTable(lb)}${crossTable(lb)}${rejected}`;
+  return `<p class="help">${meta}${generated}</p>${knockoutHtml(lb)}${standingsTable(lb)}${crossTable(lb)}${rejected}`;
 }

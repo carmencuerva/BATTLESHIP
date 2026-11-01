@@ -15,13 +15,17 @@ from battleship.tournament import (
     FORFEIT_ILLEGAL,
     FORFEIT_TIMEOUT,
     Config,
+    bracket_size,
     main,
+    next_games,
     run_game,
     run_game_in_subprocess,
     run_tournament,
     schedule,
     standings,
+    total_games,
 )
+from battleship.tournament import _bracket as bracket
 
 
 class Scanner(Player):
@@ -312,6 +316,69 @@ def test_unknown_format_rejected():
         run_tournament(infos(Scanner, variant("x")), Config(format="nope", subprocess=False))
 
 
+# --- championship --------------------------------------------------------------------------
+
+
+def test_bracket_helpers():
+    assert bracket(2) == [0, 1]
+    assert bracket(4) == [0, 3, 1, 2]  # 1st v 4th, 2nd v 3rd
+    assert bracket(8) == [0, 7, 3, 4, 1, 6, 2, 5]
+    assert [bracket_size(n, 4) for n in (2, 3, 4, 5, 9)] == [2, 2, 4, 4, 4]
+    assert bracket_size(9, 8) == 8
+
+
+def test_championship_stages_come_in_order():
+    players = infos(*(variant(n) for n in ("aa", "bb", "cc", "dd", "ee")))
+    config = Config(format="championship", games_per_pair=2, knockout_games=4, subprocess=False)
+    played = []
+    stages = []
+    while (stage := next_games(players, config, played)) is not None:
+        name, games = stage
+        stages.append((name, len(games)))
+        played += [
+            (i, j, spec, run_game([players[i].cls, players[j].cls], spec)) for i, j, spec in games
+        ]
+    assert stages == [("league", 10 * 2), ("semifinal", 2 * 4), ("final", 4)]
+    assert len(played) == total_games(players, config)
+
+
+def test_drawn_series_goes_to_the_better_league_position():
+    # Identical scanners: the first shooter always wins, so every series is drawn.
+    board = run_tournament(
+        infos(*(variant(n) for n in ("dd", "cc", "bb", "aa"))),
+        Config(format="championship", games_per_pair=2, knockout_games=2, subprocess=False),
+    )
+    league = {r["name"]: r["league_rank"] for r in board["standings"]}
+    for rnd in board["knockout"]["rounds"]:
+        for m in rnd["matches"]:
+            assert m["wins_a"] == m["wins_b"] == 1
+            assert m["winner"] == min(m["a"], m["b"], key=league.get)
+    first = min(league, key=league.get)
+    assert board["knockout"]["champion"] == board["standings"][0]["name"] == first
+
+
+def test_championship_with_builtins(builtin_players):
+    config = Config(format="championship", games_per_pair=4, knockout_games=4, subprocess=False)
+    board = run_tournament(builtin_players, config)
+    knockout = board["knockout"]
+    assert [r["name"] for r in knockout["rounds"]] == ["semifinal", "final"]
+    by_league = {r["league_rank"]: r["name"] for r in board["standings"]}
+    semis = knockout["rounds"][0]["matches"]
+    assert {(m["a"], m["b"]) for m in semis} == {
+        (by_league[1], by_league[4]),
+        (by_league[2], by_league[3]),
+    }
+    assert board["standings"][0]["name"] == knockout["champion"]
+    assert board["config"]["knockout_games"] == 4
+    assert json.loads(json.dumps(board)) == board
+
+    # The league part is the same games as a plain league with the same seed.
+    league = run_tournament(builtin_players, Config(games_per_pair=4, subprocess=False))
+    elo = {r["name"]: r["elo"] for r in league["standings"]}
+    assert {r["name"]: r["elo"] for r in board["standings"]} == elo
+    assert "knockout_games" not in league["config"]
+
+
 # --- command line --------------------------------------------------------------------------
 
 
@@ -325,6 +392,18 @@ def test_cli_writes_leaderboard(tmp_path, capsys):
     assert {r["name"] for r in board["standings"]} >= {"random", "easy", "medium", "hard"}
     assert board["rejected"] == [] and "generated_at" in board
     assert "hard" in capsys.readouterr().out
+
+
+def test_cli_championship(tmp_path, capsys):
+    from .conftest import ROOT
+
+    output = tmp_path / "board.json"
+    args = ["--root", str(ROOT), "--format", "championship", "--games", "2"]
+    args += ["--knockout-games", "2", "--no-subprocess", "--output", str(output)]
+    assert main(args) == 0
+    board = json.loads(output.read_text(encoding="utf-8"))
+    assert board["knockout"]["champion"] == board["standings"][0]["name"]
+    assert "champion:" in capsys.readouterr().out
 
 
 def test_cli_rejects_impossible_fleet(tmp_path):

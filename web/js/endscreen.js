@@ -2,6 +2,7 @@
 // storm). Shown once the game has a result; they never touch the game state.
 
 import { esc } from "./html.js";
+import { sfx } from "./sound.js";
 
 const COIN = `
 <svg viewBox="0 0 60 60" aria-hidden="true">
@@ -103,6 +104,7 @@ function startLightning(overlay) {
     overlay.classList.remove("strike");
     void overlay.offsetWidth;
     overlay.classList.add("strike");
+    sfx.thunder();
     timer = setTimeout(strike, rand(2200, 5200));
   }
   timer = setTimeout(strike, 700);
@@ -156,6 +158,8 @@ export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   document.body.appendChild(overlay);
 
   const stops = [];
+  if (victory) sfx.victory();
+  else sfx.defeat();
   if (!victory) {
     stops.push(startRain(overlay.querySelector(".rain")));
     stops.push(startLightning(overlay));

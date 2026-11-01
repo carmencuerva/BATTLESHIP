@@ -53,7 +53,7 @@ FORFEIT_BAD_PLACEMENT = "forfeit_bad_placement"
 FORFEIT_BUILD_TIMEOUT = "forfeit_build_timeout"
 FORFEIT_BUILD_ERROR = "forfeit_build_error"
 
-FORMATS = ("simple", "league")
+FORMATS = ("simple", "league", "championship")
 KILL_SLACK = 1.0  # extra seconds a silent game process gets before it is killed
 STARTUP_TIMEOUT = 60.0  # seconds for a game process to import everything and start
 
@@ -66,6 +66,8 @@ OnCall = Callable[[int, str, float], None]
 class Config:
     format: str = "league"
     games_per_pair: int = 20
+    knockout_games: int = 10  # championship: games per knockout match
+    top: int = 4  # championship: league places that reach the knockout
     seed: int = 0
     size: int = DEFAULT_SIZE
     fleet: tuple[int, ...] = DEFAULT_FLEET
@@ -260,31 +262,79 @@ def run_game_in_subprocess(entries: Sequence[ManifestEntry], spec: GameSpec) -> 
 
 
 # --- the tournament ----------------------------------------------------------------------
+#
+# A tournament is a sequence of stages: the round-robin ("league"), then, for the
+# championship format, knockout rounds between the best of the league. Which games come
+# next is a pure function of the players, the config and the games played so far
+# (next_games), so the CLI and the browser drive exactly the same tournament.
+
+Game = tuple[int, int, GameSpec]  # (i, j, spec): players[i] is player 0
+Played = tuple[int, int, GameSpec, GameRecord]
+
+ROUND_NAMES = {2: "final", 4: "semifinal", 8: "quarterfinal"}
 
 
-def schedule(players: Sequence[PlayerInfo], config: Config) -> list[tuple[int, int, GameSpec]]:
-    """Every game to play, as ``(i, j, spec)`` with ``players[i]`` as player 0.
+def _series(
+    i: int, j: int, players: Sequence[PlayerInfo], n: int, config: Config, tag: str = ""
+) -> list[Game]:
+    """``n`` games between players ``i`` and ``j``, in mirrored couples.
 
-    Games ``2m`` and ``2m+1`` of a pair share their seeds and swap who shoots first. Seeds
-    depend only on the tournament seed and the two names, so adding a player does not
-    change the games between the others.
+    Games ``2m`` and ``2m+1`` share their seeds and swap who shoots first. Seeds depend
+    only on the tournament seed, the stage ``tag`` and the two names, so adding a player
+    does not change the games between the others.
     """
+    a, b = players[i], players[j]
+    prefix = f"{config.seed}:{tag + ':' if tag else ''}{a.name}:{b.name}"
     games = []
-    for i, a in enumerate(players):
-        for j in range(i + 1, len(players)):
-            b = players[j]
-            for k in range(config.games_per_pair):
-                rng = random.Random(f"{config.seed}:{a.name}:{b.name}:{k // 2}")
-                spec = {
-                    "size": config.size,
-                    "fleet": list(config.fleet),
-                    "seeds": [rng.randrange(2**31), rng.randrange(2**31)],
-                    "first": k % 2,
-                    "time_budget": config.time_budget,
-                    "build_budget": config.build_budget,
-                }
-                games.append((i, j, spec))
+    for k in range(n):
+        rng = random.Random(f"{prefix}:{k // 2}")
+        spec = {
+            "size": config.size,
+            "fleet": list(config.fleet),
+            "seeds": [rng.randrange(2**31), rng.randrange(2**31)],
+            "first": k % 2,
+            "time_budget": config.time_budget,
+            "build_budget": config.build_budget,
+        }
+        games.append((i, j, spec))
     return games
+
+
+def schedule(players: Sequence[PlayerInfo], config: Config) -> list[Game]:
+    """Every game of the round-robin, as ``(i, j, spec)`` with ``players[i]`` as player 0."""
+    games = []
+    for i in range(len(players)):
+        for j in range(i + 1, len(players)):
+            games += _series(i, j, players, config.games_per_pair, config)
+    return games
+
+
+def bracket_size(players: int, top: int) -> int:
+    """The largest power of two that is at most ``top`` and at most ``players``."""
+    size = 1
+    while size * 2 <= min(top, players):
+        size *= 2
+    return size
+
+
+def _bracket(size: int) -> list[int]:
+    """League positions in bracket order, so 1st and 2nd can only meet in the final.
+
+    For 4: [0, 3, 1, 2] (1st v 4th, 2nd v 3rd); for 8: [0, 7, 3, 4, 1, 6, 2, 5].
+    """
+    order = [0]
+    while len(order) < size:
+        double = 2 * len(order)
+        order = [x for seed in order for x in (seed, double - 1 - seed)]
+    return order
+
+
+def total_games(players: Sequence[PlayerInfo], config: Config) -> int:
+    n = len(players)
+    league = n * (n - 1) // 2 * config.games_per_pair
+    if config.format != "championship":
+        return league
+    return league + (bracket_size(n, config.top) - 1) * config.knockout_games
 
 
 def _new_stats() -> dict[str, Any]:
@@ -303,13 +353,22 @@ def _new_stats() -> dict[str, Any]:
     }
 
 
+def _config_json(config: Config) -> dict[str, Any]:
+    hidden = {"subprocess", "jobs"}
+    if config.format != "championship":
+        hidden |= {"knockout_games", "top"}
+    return {k: v for k, v in asdict(config).items() if k not in hidden} | {
+        "fleet": list(config.fleet)
+    }
+
+
 def standings(
     players: Sequence[PlayerInfo],
-    games: Sequence[tuple[int, int, GameSpec]],
+    games: Sequence[Game],
     records: Sequence[GameRecord],
     config: Config,
 ) -> dict[str, Any]:
-    """Turn game records into the leaderboard (a JSON-ready dict)."""
+    """Turn the league's game records into the leaderboard (a JSON-ready dict)."""
     stats = {p.name: _new_stats() for p in players}
     ratings = {p.name: elo.INITIAL for p in players}
     pairs: dict[tuple[str, str], dict[str, Any]] = {}
@@ -367,17 +426,120 @@ def standings(
                 "hit_rate": round(s["hits"] / s["shots"], 3) if s["shots"] else None,
             }
         )
-    primary = "elo" if config.format == "league" else "points"
+    primary = "points" if config.format == "simple" else "elo"
     table.sort(key=lambda row: (-row[primary], row["forfeits"], row["name"]))
     for rank, row in enumerate(table, 1):
         row["rank"] = rank
     return {
         "format": config.format,
-        "config": {k: v for k, v in asdict(config).items() if k not in ("subprocess", "jobs")}
-        | {"fleet": list(config.fleet)},
+        "config": _config_json(config),
         "standings": table,
         "pairs": list(pairs.values()),
     }
+
+
+def _knockout(
+    players: Sequence[PlayerInfo], config: Config, played: Sequence[Played]
+) -> dict[str, Any]:
+    """Replay the knockout stage from the games played so far.
+
+    Returns ``{"table", "rounds", "pending", "champion"}``: the league leaderboard, the
+    finished rounds, the games still to play (``(round name, games)`` or None) and the
+    champion's index (None until the final is over). A drawn series goes to the player
+    with the better league position.
+    """
+    league = schedule(players, config)
+    table = standings(players, league, [p[3] for p in played[: len(league)]], config)
+    index = {p.name: k for k, p in enumerate(players)}
+    position = {index[row["name"]]: row["rank"] for row in table["standings"]}
+    size = bracket_size(len(players), config.top)
+    seeds = [index[row["name"]] for row in table["standings"][:size]]
+    alive = [seeds[s] for s in _bracket(size)]
+    rest = list(played[len(league) :])
+    rounds: list[dict[str, Any]] = []
+    while len(alive) > 1:
+        name = ROUND_NAMES.get(len(alive), f"round_of_{len(alive)}")
+        pairs = [(alive[k], alive[k + 1]) for k in range(0, len(alive), 2)]
+        games = [
+            g for i, j in pairs for g in _series(i, j, players, config.knockout_games, config, name)
+        ]
+        if len(rest) < len(games):
+            return {
+                "table": table,
+                "rounds": rounds,
+                "pending": (name, games[len(rest) :]),
+                "champion": None,
+            }
+        matches, winners = [], []
+        for m, (i, j) in enumerate(pairs):
+            chunk = rest[m * config.knockout_games : (m + 1) * config.knockout_games]
+            wins_a = sum(1 for p in chunk if p[3]["winner"] == 0)
+            wins_b = sum(1 for p in chunk if p[3]["winner"] == 1)
+            if wins_a != wins_b:
+                winner = i if wins_a > wins_b else j
+            else:
+                winner = i if position[i] < position[j] else j
+            winners.append(winner)
+            matches.append(
+                {
+                    "a": players[i].name,
+                    "b": players[j].name,
+                    "wins_a": wins_a,
+                    "wins_b": wins_b,
+                    "draws": len(chunk) - wins_a - wins_b,
+                    "winner": players[winner].name,
+                }
+            )
+        rest = rest[len(games) :]
+        rounds.append({"name": name, "matches": matches})
+        alive = winners
+    return {"table": table, "rounds": rounds, "pending": None, "champion": alive[0]}
+
+
+def next_games(
+    players: Sequence[PlayerInfo], config: Config, played: Sequence[Played]
+) -> tuple[str, list[Game]] | None:
+    """The stage still being played and its remaining games, or None when it is all over.
+
+    ``players`` must be in a fixed order (``run_tournament`` sorts them by name).
+    """
+    league = schedule(players, config)
+    if len(played) < len(league):
+        return "league", league[len(played) :]
+    if config.format != "championship":
+        return None
+    pending: tuple[str, list[Game]] | None = _knockout(players, config, played)["pending"]
+    return pending
+
+
+def final_leaderboard(
+    players: Sequence[PlayerInfo], config: Config, played: Sequence[Played]
+) -> dict[str, Any]:
+    """The leaderboard once ``next_games`` returns None."""
+    league = schedule(players, config)
+    if config.format != "championship":
+        return standings(players, league, [p[3] for p in played], config)
+    ko = _knockout(players, config, played)
+    if ko["pending"] is not None:
+        raise ValueError("the championship is not finished")
+    table: dict[str, Any] = ko["table"]
+    # Placement: how far each player got in the bracket, then the league position.
+    reached = {row["name"]: -1 for row in table["standings"]}
+    for r, rnd in enumerate(ko["rounds"]):
+        for match in rnd["matches"]:
+            reached[match["a"]] = reached[match["b"]] = r
+    champion = players[ko["champion"]].name
+    reached[champion] = len(ko["rounds"])
+    table["standings"].sort(key=lambda row: (-reached[row["name"]], row["rank"]))
+    for rank, row in enumerate(table["standings"], 1):
+        row["league_rank"], row["rank"] = row["rank"], rank
+    table["knockout"] = {
+        "size": bracket_size(len(players), config.top),
+        "games_per_match": config.knockout_games,
+        "rounds": ko["rounds"],
+        "champion": champion,
+    }
+    return table
 
 
 def run_tournament(
@@ -385,17 +547,17 @@ def run_tournament(
     config: Config,
     progress: Callable[[int, int], None] | None = None,
 ) -> dict[str, Any]:
-    """Play every game of the round-robin and return the leaderboard.
+    """Play every stage of the tournament and return the leaderboard.
 
     The result depends only on the players, the config and its seed (bar timeouts).
     """
     if config.format not in FORMATS:
         raise ValueError(f"unknown format {config.format!r}; choose from {FORMATS}")
     players = sorted(players, key=lambda p: p.name)
-    games = schedule(players, config)
+    total = total_games(players, config)
     done, lock = 0, threading.Lock()
 
-    def play(game: tuple[int, int, GameSpec]) -> GameRecord:
+    def play(game: Game) -> GameRecord:
         nonlocal done
         i, j, spec = game
         if config.subprocess:
@@ -408,15 +570,19 @@ def run_tournament(
         if progress:
             with lock:
                 done += 1
-                progress(done, len(games))
+                progress(done, total)
         return rec
 
-    if config.subprocess and config.jobs > 1:
-        with ThreadPoolExecutor(config.jobs) as pool:
-            records = list(pool.map(play, games))
-    else:
-        records = [play(game) for game in games]
-    return standings(players, games, records, config)
+    played: list[Played] = []
+    while (stage := next_games(players, config, played)) is not None:
+        games = stage[1]
+        if config.subprocess and config.jobs > 1:
+            with ThreadPoolExecutor(config.jobs) as pool:
+                records = list(pool.map(play, games))
+        else:
+            records = [play(game) for game in games]
+        played += [(i, j, spec, rec) for (i, j, spec), rec in zip(games, records, strict=True)]
+    return final_leaderboard(players, config, played)
 
 
 # --- command line ------------------------------------------------------------------------
@@ -432,7 +598,7 @@ def _fleet(text: str) -> tuple[int, ...]:
 
 
 def _print_table(leaderboard: dict[str, Any]) -> None:
-    primary = "elo" if leaderboard["format"] == "league" else "points"
+    primary = "points" if leaderboard["format"] == "simple" else "elo"
     print(
         f"{'#':>2}  {'player':<18} {primary:>7}  {'W-L-D':>11}  "
         f"{'forf':>4}  {'shots':>5}  {'hit%':>5}"
@@ -445,6 +611,15 @@ def _print_table(leaderboard: dict[str, Any]) -> None:
             f"{row['rank']:>2}  {row['icon']} {row['name']:<16} {row[primary]:>7}  "
             f"{wld:>11}  {row['forfeits']:>4}  {shots:>5}  {rate:>5}"
         )
+    knockout = leaderboard.get("knockout")
+    if knockout:
+        for rnd in knockout["rounds"]:
+            for m in rnd["matches"]:
+                score = f"{m['wins_a']}-{m['wins_b']}" + (
+                    f" ({m['draws']} draws)" if m["draws"] else ""
+                )
+                print(f"{rnd['name']:>12}: {m['a']} v {m['b']} {score} -> {m['winner']}")
+        print(f"champion: {knockout['champion']}")
     for item in leaderboard.get("rejected", []):
         print(f"rejected {item['source']}: {item['error']}")
 
@@ -456,6 +631,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path("."), help="repository root")
     parser.add_argument("--format", choices=FORMATS, default="league")
     parser.add_argument("--games", type=int, default=Config.games_per_pair, help="games per pair")
+    parser.add_argument(
+        "--knockout-games",
+        type=int,
+        default=Config.knockout_games,
+        help="championship: games per knockout match",
+    )
+    parser.add_argument(
+        "--top", type=int, default=Config.top, help="championship: players reaching the knockout"
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--size", type=int, default=DEFAULT_SIZE)
     parser.add_argument("--fleet", type=_fleet, default=DEFAULT_FLEET)
@@ -474,6 +658,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     reason = validate_fleet(args.size, list(args.fleet))
     if reason:
         parser.error(reason)
+    if args.knockout_games < 1 or args.top < 2:
+        parser.error("--knockout-games must be at least 1 and --top at least 2")
     if args.games < 1:
         parser.error("--games must be at least 1")
     for stream in (sys.stdout, sys.stderr):  # emoji icons on Windows consoles
@@ -488,6 +674,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     config = Config(
         format=args.format,
         games_per_pair=args.games,
+        knockout_games=args.knockout_games,
+        top=args.top,
         seed=args.seed,
         size=args.size,
         fleet=tuple(args.fleet),

@@ -1,7 +1,8 @@
 # Tournament
 
 ```bash
-battleship-tournament [--format league|simple] [--games 20] [--seed 0]
+battleship-tournament [--format league|simple|championship] [--games 20] [--seed 0]
+                      [--knockout-games 10] [--top 4]
                       [--size 10] [--fleet 5,4,3,3,2]
                       [--time-budget 2] [--build-budget 2]
                       [--jobs 4] [--no-subprocess] [--output results/leaderboard.json]
@@ -19,6 +20,22 @@ battleship-tournament [--format league|simple] [--games 20] [--seed 0]
       are processed in schedule order.
     - `simple` sorts by **points**: 1 per win, ½ per draw.
     - Ties go to fewer forfeits, then the name.
+
+## Championship
+
+`--format championship` plays the league first, then a knockout between the best
+`--top` players (4 by default; always a power of two that fits the field).
+
+- **Bracket:** seeded by league position so that 1st and 2nd can only meet in the final
+  (with 4: 1st v 4th and 2nd v 3rd in the semi-finals).
+- **Matches:** each knockout match is `--knockout-games` games (10 by default), again in
+  mirrored pairs with their own seeds. A drawn match goes to the better league position.
+- **Final ranking:** the champion first, then the finalist, then everyone else by how far
+  they got in the bracket and, after that, by league position. Each row keeps its
+  `league_rank`. The statistics in the table come from the league games only.
+- The leaderboard gains a `knockout` section: `{"size", "games_per_match", "rounds":
+  [{"name", "matches": [{"a", "b", "wins_a", "wins_b", "draws", "winner"}]}],
+  "champion"}`.
 
 ## Isolation and forfeits
 
@@ -45,10 +62,10 @@ If both bots fail while building or placing, the game is a draw.
   "format": "league",
   "config": {"games_per_pair": 20, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
   "standings": [
-    {"rank": 1, "name": "hard", "icon": "🧠", "elo": 1767.8, "points": 70.0,
-     "played": 80, "wins": 70, "losses": 10, "draws": 0, "forfeits": 0,
-     "forfeit_reasons": {}, "wins_first": 36, "wins_second": 34,
-     "avg_shots_to_win": 36.6, "hit_rate": 0.452, ...}
+    {"rank": 1, "name": "hard", "icon": "🧠", "elo": 1735.7, "points": 66.0,
+     "played": 80, "wins": 66, "losses": 14, "draws": 0, "forfeits": 0,
+     "forfeit_reasons": {}, "wins_first": 35, "wins_second": 31,
+     "avg_shots_to_win": 38.2, "hit_rate": 0.427, ...}
   ],
   "pairs": [{"a": "easy", "b": "hard", "wins_a": 0, "wins_b": 20, "draws": 0}],
   "rejected": [],

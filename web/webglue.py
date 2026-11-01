@@ -236,14 +236,17 @@ def shoot(board: str, shot: str, attacker: str) -> str:
 
 
 # --- tournament ------------------------------------------------------------------------------
-# The same schedule, game loop and standings as the CI tournament (battleship.tournament),
-# driven one game at a time so the page can redraw its progress between games.
+# The same stages, game loop and standings as the CI tournament (battleship.tournament).
+# The page asks for the next games, plays them one at a time (redrawing in between) and
+# sends back everything played so far: Python decides every stage, JS only loops.
 
 
 def _config(config: dict[str, Any]) -> tournament.Config:
     return tournament.Config(
         format=config.get("format", "league"),
         games_per_pair=config["games_per_pair"],
+        knockout_games=config.get("knockout_games", tournament.Config.knockout_games),
+        top=config.get("top", tournament.Config.top),
         seed=config.get("seed", 0),
         size=config.get("size", game.DEFAULT_SIZE),
         fleet=tuple(config.get("fleet", game.DEFAULT_FLEET)),
@@ -264,30 +267,56 @@ def _entrants(names: list[str]) -> list[PlayerInfo]:
     return infos
 
 
-def tournament_plan(config: str) -> str:
-    """Every game of a round-robin between ``config["players"]``.
-
-    ``config`` holds ``players`` (names), ``games_per_pair`` and optionally ``format``,
-    ``seed``, ``size`` and ``fleet``. Returns ``{"players": [names in table order],
-    "games": [[i, j, spec], ...]}`` or ``{"error"}``.
-    """
-    config_ = _in(config)
+def _setup(config: dict[str, Any]) -> tuple[list[PlayerInfo], tournament.Config]:
+    """Validated entrants (in table order) and settings; raises ValueError."""
     try:
-        entrants = _entrants(config_["players"])
-        if len(entrants) < 2:
-            raise ValueError("pick at least 2 players")
-        if config_.get("format", "league") not in tournament.FORMATS:
-            raise ValueError(f"unknown format {config_['format']!r}")
-        settings = _config(config_)
-        reason = _fleet_problem(settings.size, list(settings.fleet))
-        if reason:
-            raise ValueError(reason)
-        if settings.games_per_pair < 1:
-            raise ValueError("games per pair must be at least 1")
-    except (KeyError, TypeError, ValueError) as exc:
+        entrants = _entrants(config["players"])
+        settings = _config(config)
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"bad tournament config: {exc!r}") from None
+    if len(entrants) < 2:
+        raise ValueError("pick at least 2 players")
+    if settings.format not in tournament.FORMATS:
+        raise ValueError(f"unknown format {settings.format!r}")
+    reason = _fleet_problem(settings.size, list(settings.fleet))
+    if reason:
+        raise ValueError(reason)
+    if settings.games_per_pair < 1 or settings.knockout_games < 1:
+        raise ValueError("games per pair and per knockout match must be at least 1")
+    return entrants, settings
+
+
+def _played(played: Any) -> list[tournament.Played]:
+    return [(i, j, spec, record) for i, j, spec, record in played]
+
+
+def tournament_next(config: str, played: str) -> str:
+    """The games still to play in the current stage.
+
+    ``config`` holds ``players`` (names), ``games_per_pair`` and optionally ``format``
+    ("league", "simple" or "championship"), ``knockout_games``, ``top``, ``seed``, ``size``
+    and ``fleet``. ``played`` is every game so far as ``[i, j, spec, record]``.
+
+    Returns ``{"players": [names in table order], "stage", "games": [[i, j, spec], ...],
+    "total"}``, ``{"done": true, "total"}`` when the tournament is over, or ``{"error"}``.
+    """
+    try:
+        entrants, settings = _setup(_in(config))
+    except ValueError as exc:
         return _out({"error": str(exc)})
-    games = tournament.schedule(entrants, settings)
-    return _out({"players": [p.name for p in entrants], "games": [list(g) for g in games]})
+    total = tournament.total_games(entrants, settings)
+    stage = tournament.next_games(entrants, settings, _played(_in(played)))
+    if stage is None:
+        return _out({"done": True, "total": total})
+    name, games = stage
+    return _out(
+        {
+            "players": [p.name for p in entrants],
+            "stage": name,
+            "games": [list(g) for g in games],
+            "total": total,
+        }
+    )
 
 
 def tournament_game(names: str, spec: str) -> str:
@@ -302,9 +331,7 @@ def tournament_game(names: str, spec: str) -> str:
     return _out(tournament.run_game(classes, _in(spec)))
 
 
-def tournament_standings(config: str, games: str, records: str) -> str:
-    """The leaderboard (same shape as ``results/leaderboard.json``) of a finished plan."""
-    config_ = _in(config)
-    entrants = _entrants(config_["players"])
-    games_ = [tuple(g) for g in _in(games)]
-    return _out(tournament.standings(entrants, games_, _in(records), _config(config_)))
+def tournament_result(config: str, played: str) -> str:
+    """The leaderboard (same shape as ``results/leaderboard.json``) once it is all played."""
+    entrants, settings = _setup(_in(config))
+    return _out(tournament.final_leaderboard(entrants, settings, _played(_in(played))))

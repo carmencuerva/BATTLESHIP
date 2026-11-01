@@ -30,6 +30,10 @@
 
 /* --- page ------------------------------------------------------------------------------- */
 
+html {
+  background: var(--sea-deep);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -2063,6 +2067,67 @@ td.who small {
 
 .cross th.who {
   text-align: left;
+}
+
+.ko {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin: 8px 0;
+}
+
+.ko-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 12px;
+  min-width: 170px;
+}
+
+.ko-round h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ko-match {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(2, 14, 26, 0.6);
+}
+
+.ko-side {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 10px;
+  color: var(--muted);
+}
+
+.ko-side + .ko-side {
+  border-top: 1px solid rgba(242, 193, 78, 0.2);
+}
+
+.ko-side.won {
+  color: var(--text);
+  font-weight: 800;
+  background: rgba(242, 193, 78, 0.12);
+}
+
+.ko-champion {
+  align-items: center;
+  text-align: center;
+  color: var(--gold);
+}
+
+.trophy {
+  font-size: 46px;
+  filter: drop-shadow(0 0 12px rgba(242, 193, 78, 0.7));
+  animation: hat-bob 2.6s ease-in-out infinite;
 }
 
 progress {
