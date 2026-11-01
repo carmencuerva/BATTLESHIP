@@ -1,4 +1,6 @@
 # Players submitted by pull request. Add your .py file to this folder and one entry here:
 #   - file: my_bot.py
 #     class: MyBot
-players: []
+players:
+  - file: lucia_bot.py
+    class: LuciaBot

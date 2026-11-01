@@ -24,19 +24,41 @@
       "description": "Hides its fleet where hunters look least; shoots the most likely cell.",
       "icon": "🧠",
       "source": "builtin/hard_bot.py",
-      "points": 55.0,
-      "elo": 1752.2,
-      "played": 60,
-      "wins": 55,
-      "losses": 5,
+      "points": 70.0,
+      "elo": 1767.8,
+      "played": 80,
+      "wins": 70,
+      "losses": 10,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 28,
-      "wins_second": 27,
-      "avg_shots_to_win": 37.2,
-      "hit_rate": 0.448,
+      "wins_first": 36,
+      "wins_second": 34,
+      "avg_shots_to_win": 36.6,
+      "hit_rate": 0.452,
       "rank": 1
+    },
+    {
+      "name": "lucia",
+      "authors": [
+        "Lucía Argüello"
+      ],
+      "description": "Skips water the no-touch rule gives away; hunts far from earlier shots.",
+      "icon": "🐬",
+      "source": "custom/lucia_bot.py",
+      "points": 62.0,
+      "elo": 1682.4,
+      "played": 80,
+      "wins": 62,
+      "losses": 18,
+      "draws": 0,
+      "forfeits": 0,
+      "forfeit_reasons": {},
+      "wins_first": 32,
+      "wins_second": 30,
+      "avg_shots_to_win": 41.4,
+      "hit_rate": 0.4,
+      "rank": 2
     },
     {
       "name": "medium",
@@ -46,19 +68,19 @@
       "description": "Random fleet; hunts on a parity grid, then finishes every ship it hits.",
       "icon": "🎯",
       "source": "builtin/medium_bot.py",
-      "points": 45.0,
-      "elo": 1630.3,
-      "played": 60,
-      "wins": 45,
-      "losses": 15,
+      "points": 48.0,
+      "elo": 1548.3,
+      "played": 80,
+      "wins": 48,
+      "losses": 32,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 23,
-      "wins_second": 22,
-      "avg_shots_to_win": 51.5,
-      "hit_rate": 0.336,
-      "rank": 2
+      "wins_first": 25,
+      "wins_second": 23,
+      "avg_shots_to_win": 51.2,
+      "hit_rate": 0.33,
+      "rank": 3
     },
     {
       "name": "easy",
@@ -69,18 +91,18 @@
       "icon": "🐣",
       "source": "builtin/easy_bot.py",
       "points": 16.0,
-      "elo": 1428.4,
-      "played": 60,
+      "elo": 1384.2,
+      "played": 80,
       "wins": 16,
-      "losses": 44,
+      "losses": 64,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
       "wins_first": 9,
       "wins_second": 7,
       "avg_shots_to_win": 83.9,
-      "hit_rate": 0.192,
-      "rank": 3
+      "hit_rate": 0.19,
+      "rank": 4
     },
     {
       "name": "random",
@@ -91,24 +113,31 @@
       "icon": "🎲",
       "source": "builtin/random_bot.py",
       "points": 4.0,
-      "elo": 1189.1,
-      "played": 60,
+      "elo": 1117.3,
+      "played": 80,
       "wins": 4,
-      "losses": 56,
+      "losses": 76,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
       "wins_first": 3,
       "wins_second": 1,
       "avg_shots_to_win": 97.5,
-      "hit_rate": 0.172,
-      "rank": 4
+      "hit_rate": 0.175,
+      "rank": 5
     }
   ],
   "pairs": [
     {
       "a": "easy",
       "b": "hard",
+      "wins_a": 0,
+      "wins_b": 20,
+      "draws": 0
+    },
+    {
+      "a": "easy",
+      "b": "lucia",
       "wins_a": 0,
       "wins_b": 20,
       "draws": 0
@@ -129,6 +158,13 @@
     },
     {
       "a": "hard",
+      "b": "lucia",
+      "wins_a": 15,
+      "wins_b": 5,
+      "draws": 0
+    },
+    {
+      "a": "hard",
       "b": "medium",
       "wins_a": 15,
       "wins_b": 5,
@@ -136,6 +172,20 @@
     },
     {
       "a": "hard",
+      "b": "random",
+      "wins_a": 20,
+      "wins_b": 0,
+      "draws": 0
+    },
+    {
+      "a": "lucia",
+      "b": "medium",
+      "wins_a": 17,
+      "wins_b": 3,
+      "draws": 0
+    },
+    {
+      "a": "lucia",
       "b": "random",
       "wins_a": 20,
       "wins_b": 0,
@@ -150,5 +200,5 @@
     }
   ],
   "rejected": [],
-  "generated_at": "2026-10-29T17:31:29+00:00"
+  "generated_at": "2026-11-01T11:03:26+00:00"
 }

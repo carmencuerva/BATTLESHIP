@@ -45,10 +45,10 @@ If both bots fail while building or placing, the game is a draw.
   "format": "league",
   "config": {"games_per_pair": 20, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
   "standings": [
-    {"rank": 1, "name": "hard", "icon": "🧠", "elo": 1752.2, "points": 55.0,
-     "played": 60, "wins": 55, "losses": 5, "draws": 0, "forfeits": 0,
-     "forfeit_reasons": {}, "wins_first": 28, "wins_second": 27,
-     "avg_shots_to_win": 37.2, "hit_rate": 0.448, ...}
+    {"rank": 1, "name": "hard", "icon": "🧠", "elo": 1767.8, "points": 70.0,
+     "played": 80, "wins": 70, "losses": 10, "draws": 0, "forfeits": 0,
+     "forfeit_reasons": {}, "wins_first": 36, "wins_second": 34,
+     "avg_shots_to_win": 36.6, "hit_rate": 0.452, ...}
   ],
   "pairs": [{"a": "easy", "b": "hard", "wins_a": 0, "wins_b": 20, "draws": 0}],
   "rejected": [],

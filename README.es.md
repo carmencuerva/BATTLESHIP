@@ -57,6 +57,12 @@ La guía completa está en [Escribe un bot](docs/write-a-bot.es.md). Mira tambi�
 | 🎯 medium | busca en damero y luego remata cada barco que toca |
 | 🧠 hard | dispara a la casilla más probable según todas las posiciones legales de los barcos; esconde su flota donde menos miran los cazadores |
 
+Bots enviados (`players/custom/`):
+
+| bot | autora | estrategia |
+|-----|--------|------------|
+| 🐬 lucia | Lucía Argüello | descarta el agua que delata la regla de no tocarse; busca lejos de los disparos anteriores |
+
 ## Estructura del repositorio
 
 | ruta | qué |

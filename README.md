@@ -56,6 +56,12 @@ The full guide is [Write a bot](docs/write-a-bot.md). See also [CONTRIBUTING.md]
 | 🎯 medium | parity hunt, then finishes every ship it hits |
 | 🧠 hard | shoots the most likely cell given every legal ship position; hides its fleet where hunters look least |
 
+Submitted bots (`players/custom/`):
+
+| bot | author | strategy |
+|-----|--------|----------|
+| 🐬 lucia | Lucía Argüello | skips water the no-touch rule gives away; hunts far from earlier shots |
+
 ## Repository layout
 
 | path | what |

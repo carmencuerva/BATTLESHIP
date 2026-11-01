@@ -45,4 +45,5 @@ def test_unpacked_zip_runs_standalone(tmp_path):
     import json
 
     players = json.loads(out.stdout)["players"]
-    assert [p["name"] for p in players] == ["random", "easy", "medium", "hard"]
+    assert [p["name"] for p in players][:4] == ["random", "easy", "medium", "hard"]
+    assert {p["source"].split("/")[0] for p in players[4:]} <= {"custom"}  # submitted bots
