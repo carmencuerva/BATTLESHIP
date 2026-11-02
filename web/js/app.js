@@ -11,6 +11,7 @@ import { leaderboardHtml, stageName } from "./leaderboard.js";
 import { createParrot } from "./parrot.js";
 import { miniShip } from "./ships.js";
 import { isMuted, setMuted, sfx } from "./sound.js";
+import { load, save } from "./store.js";
 
 const app = document.getElementById("app");
 const SPEEDS = { slow: 900, normal: 400, fast: 60 };
@@ -28,8 +29,12 @@ const settings = {
   opponent: "hard",
   botA: "medium",
   botB: "hard",
-  nameA: "",
-  nameB: "",
+  // Names are remembered between visits (store.js forgets quietly if storage is blocked).
+  nameMe: load("name", ""),
+  nameA: load("hotseat", ["", ""])[0] ?? "",
+  nameB: load("hotseat", ["", ""])[1] ?? "",
+  // How to be addressed once promoted ("m": capitán, "f": capitana); Spanish only.
+  forms: { me: "m", a: "m", b: "m", ...load("forms", {}) },
   size: 10,
   fleet: [5, 4, 3, 3, 2],
   speed: "normal",
@@ -129,16 +134,28 @@ function menuScreen() {
        <span class="seal-text">${th(`mode_${value}`)}</span>
      </label>`;
   let fields = "";
+  // A name field, plus (in Spanish) how the parrot should address that player.
+  const nameField = (key, label, value) => {
+    const form = settings.forms[key];
+    const choice =
+      getLang() === "es"
+        ? `<label class="form-choice">${th("form_label")}<select id="form-${key}">` +
+          `<option value="m"${form === "m" ? " selected" : ""}>${th("title_captain")}</option>` +
+          `<option value="f"${form === "f" ? " selected" : ""}>${th("title_captain_f")}</option></select></label>`
+        : "";
+    return `<div class="name-field"><label>${th(label)}<input id="name-${key}" maxlength="20" autocomplete="nickname" value="${esc(value)}" placeholder="${th("name_placeholder")}"></label>${choice}</div>`;
+  };
   if (settings.mode === "hvb") {
-    fields = `<label>${th("opponent")}<select id="opponent">${playerOptions(settings.opponent)}</select></label>`;
+    fields =
+      nameField("me", "ask_name", settings.nameMe) +
+      `<label>${th("opponent")}<select id="opponent">${playerOptions(settings.opponent)}</select></label>`;
   } else if (settings.mode === "bvb") {
     fields =
       `<label>${th("bot_a")}<select id="bot-a">${playerOptions(settings.botA)}</select></label>` +
       `<label>${th("bot_b")}<select id="bot-b">${playerOptions(settings.botB)}</select></label>`;
   } else {
     fields =
-      `<label>${th("name_a")}<input id="name-a" maxlength="20" value="${esc(settings.nameA)}" placeholder="${th("name_a")}"></label>` +
-      `<label>${th("name_b")}<input id="name-b" maxlength="20" value="${esc(settings.nameB)}" placeholder="${th("name_b")}"></label>`;
+      nameField("a", "ask_name_a", settings.nameA) + nameField("b", "ask_name_b", settings.nameB);
   }
   const speed = (value) =>
     `<option value="${value}"${settings.speed === value ? " selected" : ""}>${th(`speed_${value}`)}</option>`;
@@ -175,6 +192,8 @@ function menuScreen() {
     settings.opponent = app.querySelector("#opponent")?.value ?? settings.opponent;
     settings.botA = app.querySelector("#bot-a")?.value ?? settings.botA;
     settings.botB = app.querySelector("#bot-b")?.value ?? settings.botB;
+    settings.nameMe = app.querySelector("#name-me")?.value.trim() ?? settings.nameMe;
+    for (const key of ["me", "a", "b"]) settings.forms[key] = app.querySelector(`#form-${key}`)?.value ?? settings.forms[key];
     settings.nameA = app.querySelector("#name-a")?.value.trim() ?? settings.nameA;
     settings.nameB = app.querySelector("#name-b")?.value.trim() ?? settings.nameB;
     settings.size = Number(app.querySelector("#size").value);
@@ -391,13 +410,22 @@ function startMatch() {
   const { mode } = settings;
   const kinds = { hvb: ["human", "bot"], bvb: ["bot", "bot"], hvh: ["human", "human"] }[mode];
   const bots = { hvb: [null, settings.opponent], bvb: [settings.botA, settings.botB], hvh: [null, null] }[mode];
+  if (mode === "hvb") save("name", settings.nameMe);
+  if (mode === "hvh") save("hotseat", [settings.nameA, settings.nameB]);
+  save("forms", settings.forms);
+  const forms = { hvb: [settings.forms.me, "m"], bvb: ["m", "m"], hvh: [settings.forms.a, settings.forms.b] }[mode];
+  // The names people typed in (empty if they left the field blank).
+  const typed = kinds.map((kind, i) => {
+    if (kind === "bot") return "";
+    return mode === "hvb" ? settings.nameMe : i === 0 ? settings.nameA : settings.nameB;
+  });
   const names = kinds.map((kind, i) => {
     if (kind === "bot") {
       const label = bots[i];
       return mode === "bvb" && bots[0] === bots[1] ? `${label} (${"AB"[i]})` : label;
     }
-    if (mode === "hvb") return t("you");
-    return (i === 0 ? settings.nameA : settings.nameB) || t(i === 0 ? "name_a" : "name_b");
+    if (typed[i]) return typed[i];
+    return mode === "hvb" ? t("you") : t(i === 0 ? "name_a" : "name_b");
   });
   match = {
     id: ++matchCount,
@@ -409,6 +437,9 @@ function startMatch() {
       name: names[i],
       icon: kind === "bot" ? playerByName(bots[i])?.icon ?? "🤖" : "🧑",
       bot: bots[i],
+      typed: typed[i], // a real name to call the player by
+      rank: "deckhand", // promoted to "captain" after sinking a first ship
+      form: forms[i],
       handle: null,
       board: null,
     })),
@@ -616,11 +647,37 @@ function say(key, vars = {}, options = {}) {
   layout?.parrot.say(t(key, vars), options);
 }
 
+// How the parrot addresses a human: "deckhand Ana", "Captain Ana", or just the rank.
+function title(side) {
+  return side.rank === "captain" && side.form === "f" ? "captain_f" : side.rank;
+}
+
+function addr(side) {
+  if (side.typed) return t(`title_${title(side)}_named`, { name: side.typed });
+  return match.mode === "hvh" ? side.name : t(`title_${title(side)}`);
+}
+
 function sayTurn() {
   const side = match.sides[match.attacker];
-  if (match.mode === "hvb") say(side.kind === "human" ? "p_your_turn" : "p_opp_turn", {}, { mood: "turn" });
-  else if (match.mode === "hvh") say("p_your_turn_named", { name: side.name }, { mood: "turn" });
+  if (side.kind === "human") say("p_your_turn", { who: addr(side) }, { mood: "turn" });
+  else if (match.mode === "hvb") say("p_opp_turn", { name: side.name }, { mood: "turn" });
   else say("p_turn_of", { name: side.name }, { mood: "turn" });
+}
+
+// The parrot's line for a shot: it speaks to the human who fired, or warns the human who
+// was fired at, or (bot v bot) just calls it.
+function sayShot(attacker, defender, result, promoted) {
+  const { outcome, length } = result;
+  const lengthSub = outcome === "sunk" ? t("p_sunk_sub", { length }) : undefined;
+  const mood = outcome === "miss" ? "miss" : outcome;
+  if (attacker.kind === "human") {
+    const sub = promoted ? `${lengthSub} · ${t("p_promoted", { name: attacker.typed || attacker.name, title: t(`title_${title(attacker)}`) })}` : lengthSub;
+    say(`p_${outcome}_you`, { who: addr(attacker) }, { mood, sub });
+  } else if (defender.kind === "human") {
+    say(`p_${outcome}_bot`, { name: attacker.name, who: addr(defender) }, { mood, sub: lengthSub });
+  } else {
+    say({ miss: "p_miss", hit: "p_hit", sunk: "p_sunk" }[outcome], {}, { mood, sub: lengthSub });
+  }
 }
 
 function leaveGame() {
@@ -704,9 +761,10 @@ async function fire(shot) {
       sfx.sink();
     }
   }
-  if (outcome === "miss") say("p_miss", {}, { mood: "miss" });
-  else if (outcome === "hit") say("p_hit", {}, { mood: "hit" });
-  else say("p_sunk", {}, { mood: "sunk", sub: t("p_sunk_sub", { length: res.result.length }) });
+  const shooter = m.sides[a];
+  const promoted = outcome === "sunk" && shooter.kind === "human" && shooter.rank === "deckhand";
+  if (promoted) shooter.rank = "captain";
+  sayShot(shooter, m.sides[d], res.result, promoted);
 
   if (res.terminal) {
     stopMatch();
@@ -776,8 +834,8 @@ function showEnd(m) {
   const kind = m.mode === "hvb" && winner.kind !== "human" ? "defeat" : "victory";
   let sub;
   if (m.over.forfeit != null) sub = t("end_forfeit", { name: loser.name });
-  else if (kind === "defeat") sub = t("end_defeat_sub", { name: winner.name, shots: m.shots[w] });
-  else if (m.mode === "hvb") sub = t("end_victory_sub", { shots: m.shots[w] });
+  else if (kind === "defeat") sub = t("end_defeat_sub", { name: winner.name, shots: m.shots[w], who: addr(loser) });
+  else if (m.mode === "hvb") sub = t("end_victory_sub", { shots: m.shots[w], who: addr(winner) });
   else sub = t("end_winner_sub", { name: winner.name, shots: m.shots[w] });
   showEndScreen(
     kind,

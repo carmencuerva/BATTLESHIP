@@ -2517,3 +2517,28 @@ progress {
     height: 70px;
   }
 }
+
+/* A player's name with, in Spanish, how the parrot should address them. */
+.name-field {
+  flex: 1 1 260px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.name-field > label:first-child {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.name-field .form-choice {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}

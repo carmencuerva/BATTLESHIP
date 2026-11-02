@@ -8,6 +8,9 @@ navegador gracias a [Pyodide](https://pyodide.org).
 - **Jugar**: [carmencuerva.github.io/BATTLESHIP](https://carmencuerva.github.io/BATTLESHIP/).
   Puedes jugar contra un bot, ver a dos bots enfrentarse, jugar contra otra persona en el
   mismo dispositivo o lanzar un torneo en el navegador.
+- **Tu nombre pirata**: la web te lo pide y el loro te llama por él (grumete hasta que
+  hundes tu primer barco, y capitán o capitana después, como elijas). Se guarda solo en tu
+  navegador (`localStorage`); no se envía a ningún sitio.
 - **Clasificación**: la pestaña *Clasificación* de la web muestra el último torneo oficial.
 - **Escribe tu propio bot**: mira [Escribe un bot](write-a-bot.md). Necesitas un único
   fichero de Python y una línea en un manifiesto.

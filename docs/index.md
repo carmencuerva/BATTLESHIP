@@ -8,6 +8,9 @@ the same code plays the official tournament in CI and runs in your browser via
 - **Play**: [carmencuerva.github.io/BATTLESHIP](https://carmencuerva.github.io/BATTLESHIP/).
   You can play against a bot, watch two bots play each other, play another person on the same
   device, or run a tournament in the browser.
+- **Your pirate name**: the page asks for it and the parrot calls you by it (deckhand until
+  you sink your first ship, captain after that). It is stored only in your own browser
+  (`localStorage`); nothing is sent anywhere.
 - **Ranking**: the *Ranking* tab of the page shows the latest official tournament.
 - **Write your own bot**: see [Write a bot](write-a-bot.md). You need a single Python file
   and one line in a manifest.
