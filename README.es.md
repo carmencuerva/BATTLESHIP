@@ -59,7 +59,7 @@ La guía completa está en [Escribe un bot](docs/write-a-bot.es.md). Mira tambi�
 
 Bots enviados (`players/custom/`):
 
-| bot | autora | estrategia |
+| bot | autoría | estrategia |
 |-----|--------|------------|
 | 🐬 lucia | Lucía Argüello | descarta el agua que delata la regla de no tocarse; busca donde aún cabe el barco más largo; esconde su flota como hard |
 
@@ -73,6 +73,12 @@ Bots enviados (`players/custom/`):
 | `scripts/` | `build_web.py` (genera `web/py.zip`) y `check_players.py` (valida los bots enviados) |
 | `docs/` | documentación bilingüe con MkDocs |
 | `tests/` | tests de pytest y de JavaScript (`tests/js`) |
+
+## Créditos
+
+- Fuentes: [Pirata One](https://fonts.google.com/specimen/Pirata+One), [Bangers](https://fonts.google.com/specimen/Bangers) y [Nunito](https://fonts.google.com/specimen/Nunito), todas con la [SIL Open Font License 1.1](https://openfontlicense.org) y servidas por Google Fonts.
+- Los barcos, el loro, la rosa de los vientos, los sellos, los efectos y todos los sonidos los dibuja o sintetiza el propio código del proyecto (SVG, CSS, Web Audio).
+- Las ilustraciones de los piratas de las pantallas finales y el sombrero (`web/img/`) las aportaron las personas que firman el proyecto.
 
 ## Licencia
 

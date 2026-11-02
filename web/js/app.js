@@ -104,10 +104,30 @@ function playerOptions(selected) {
     .join("");
 }
 
+// Hand-drawn icons for the voyage "seals" and the logbook's compass rose (own SVG).
+const SEALS = {
+  hvb: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 38 L34 14 M34 14 l4 -4 l2 2 l-4 4 M14 34 l-4 4 M38 38 L14 14 M14 14 l-4 -4 l-2 2 l4 4 M34 34 l4 4" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" fill="none"/><path d="M8 30 l10 10 M40 30 l-10 10" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>`,
+  bvb: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 30 h36 l-5 8 h-26 z" fill="currentColor"/><path d="M16 29 V10 l10 8 h-10 M32 29 V14 l-8 6 h8" stroke="currentColor" stroke-width="3" fill="none" stroke-linejoin="round"/><circle cx="24" cy="6" r="2.5" fill="currentColor"/></svg>`,
+  hvh: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M3 24 q9 -12 18 0 q-9 4 -18 0 z M27 24 q9 -12 18 0 q-9 4 -18 0 z" fill="currentColor"/><circle cx="12" cy="32" r="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="36" cy="32" r="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M12 37 v6 M36 37 v6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`,
+};
+
+const COMPASS = `<svg class="compass" viewBox="0 0 100 100" aria-hidden="true">
+  <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2"/>
+  <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 4"/>
+  <path d="M50 4 L57 50 L50 96 L43 50 Z" fill="currentColor" opacity=".85"/>
+  <path d="M4 50 L50 43 L96 50 L50 57 Z" fill="currentColor" opacity=".55"/>
+  <path d="M18 18 L53 47 L82 82 L47 53 Z M82 18 L53 53 L18 82 L47 47 Z" fill="currentColor" opacity=".3"/>
+  <circle cx="50" cy="50" r="5" fill="#b5402f"/>
+  <text x="50" y="16" text-anchor="middle" font-size="11" font-family="Pirata One, serif" fill="currentColor">N</text>
+</svg>`;
+
 function menuScreen() {
   const mode = (value) =>
-    `<label class="radio"><input type="radio" name="mode" value="${value}"` +
-    `${settings.mode === value ? " checked" : ""}> ${th(`mode_${value}`)}</label>`;
+    `<label class="seal${settings.mode === value ? " chosen" : ""}">
+       <input type="radio" name="mode" value="${value}"${settings.mode === value ? " checked" : ""}>
+       <span class="seal-icon">${SEALS[value]}</span>
+       <span class="seal-text">${th(`mode_${value}`)}</span>
+     </label>`;
   let fields = "";
   if (settings.mode === "hvb") {
     fields = `<label>${th("opponent")}<select id="opponent">${playerOptions(settings.opponent)}</select></label>`;
@@ -122,20 +142,33 @@ function menuScreen() {
   }
   const speed = (value) =>
     `<option value="${value}"${settings.speed === value ? " selected" : ""}>${th(`speed_${value}`)}</option>`;
+  const code = [1, 2, 3, 4].map((n) => `<li>${th(`code_${n}`)}</li>`).join("");
 
   app.innerHTML = `
-    <section class="panel menu">
-      <h2>${th("menu_title")}</h2>
-      <fieldset><legend>${th("mode")}</legend>${mode("hvb")}${mode("bvb")}${mode("hvh")}</fieldset>
-      <div class="fields">${fields}</div>
-      <div class="fields">
-        <label>${th("board_size")}<input id="size" type="number" min="5" max="15" value="${settings.size}"></label>
-        <label>${th("fleet")}<input id="fleet" value="${settings.fleet.join(",")}"></label>
-        <label>${th("speed")}<select id="speed">${speed("slow")}${speed("normal")}${speed("fast")}</select></label>
+    <section class="voyage">
+      <div class="logbook">
+        ${COMPASS}
+        <h2>${th("menu_title")}</h2>
+        <p class="logbook-sub">${th("menu_sub")}</p>
+        <fieldset class="seals"><legend>${th("mode")}</legend>${mode("hvb")}${mode("bvb")}${mode("hvh")}</fieldset>
+        <div class="fields">${fields}</div>
+        <div class="fields">
+          <label>${th("board_size")}<input id="size" type="number" min="5" max="15" value="${settings.size}"></label>
+          <label>${th("fleet")}<input id="fleet" value="${settings.fleet.join(",")}"></label>
+          <label>${th("speed")}<select id="speed">${speed("slow")}${speed("normal")}${speed("fast")}</select></label>
+        </div>
+        <button id="start" class="primary board-button">${th("start")}</button>
+        <p id="menu-error" class="error" role="alert"></p>
       </div>
-      <p class="rules">${th("rules_short")}</p>
-      <button id="start" class="primary">${th("start")}</button>
-      <p id="menu-error" class="error"></p>
+      <aside class="scroll" aria-labelledby="code-title">
+        <div class="scroll-roll top"></div>
+        <div class="scroll-body">
+          <h3 id="code-title">${th("code_title")}</h3>
+          <ol class="code">${code}</ol>
+          <div class="wax" aria-hidden="true">☠</div>
+        </div>
+        <div class="scroll-roll bottom"></div>
+      </aside>
     </section>`;
 
   const readForm = () => {

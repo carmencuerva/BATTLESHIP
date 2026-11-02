@@ -2241,3 +2241,279 @@ progress {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* --- new voyage: the logbook page and the pirate-code scroll ----------------------------- */
+
+.voyage {
+  --ink: #3b2610;
+  --ink-soft: #6b4a26;
+  --paper: #f1e2bd;
+  --paper-dark: #d9c08a;
+  --wax: #a8261c;
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(250px, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+
+.logbook,
+.scroll-body {
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(255, 255, 255, 0.45), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(120, 70, 20, 0.22), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(110, 70, 30, 0.05) 0 1px, transparent 1px 28px),
+    linear-gradient(160deg, var(--paper), var(--paper-dark));
+}
+
+.logbook {
+  position: relative;
+  padding: 26px 30px 22px;
+  border-radius: 6px 18px 10px 22px / 18px 8px 22px 10px;
+  box-shadow:
+    inset 0 0 0 2px rgba(90, 55, 20, 0.35),
+    inset 0 0 40px rgba(110, 60, 10, 0.45),
+    0 16px 36px rgba(0, 0, 0, 0.5);
+  transform: rotate(-0.4deg);
+}
+
+/* burnt, uneven edge */
+.logbook::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 14px 4px rgba(70, 35, 5, 0.45);
+}
+
+.logbook h2 {
+  margin: 0;
+  font: 44px/1 var(--title-font);
+  color: var(--ink);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
+}
+
+.logbook-sub {
+  margin: 4px 0 16px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.compass {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 92px;
+  height: 92px;
+  color: var(--ink-soft);
+  opacity: 0.75;
+  animation: compass-drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes compass-drift {
+  to {
+    transform: rotate(14deg);
+  }
+}
+
+.logbook fieldset {
+  border: 1.5px dashed rgba(90, 55, 20, 0.45);
+  border-radius: 10px;
+  margin: 0 0 14px;
+}
+
+.logbook legend,
+.logbook label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.logbook input,
+.logbook select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+  background: rgba(255, 250, 235, 0.75);
+  color: var(--ink);
+  border: 1.5px solid rgba(90, 55, 20, 0.55);
+  font-weight: 600;
+}
+
+.logbook input:focus-visible,
+.logbook select:focus-visible,
+.seal:focus-within {
+  outline: 3px solid var(--wax);
+  outline-offset: 2px;
+}
+
+.seals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px 14px;
+}
+
+.seal {
+  position: relative;
+  flex: 1 1 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px;
+  border: 2px solid rgba(90, 55, 20, 0.4);
+  border-radius: 14px;
+  background: rgba(255, 250, 235, 0.45);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.seal input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seal:hover {
+  transform: translateY(-2px) rotate(-1deg);
+}
+
+.seal-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  border: 2px dashed rgba(90, 55, 20, 0.45);
+}
+
+.seal-icon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.seal-text {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.seal.chosen {
+  border-color: var(--wax);
+  background: rgba(255, 240, 220, 0.85);
+  transform: rotate(-1.5deg);
+}
+
+.seal.chosen .seal-icon {
+  color: #fff4e4;
+  background: radial-gradient(circle at 35% 30%, #d2463a, var(--wax) 60%, #6e140d);
+  border: 2px solid #6e140d;
+  box-shadow: 0 3px 6px rgba(80, 10, 0, 0.45);
+  animation: stamp 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes stamp {
+  from {
+    transform: scale(1.6) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+.board-button {
+  font-family: var(--title-font);
+  font-size: 26px;
+  letter-spacing: 0.03em;
+  padding: 8px 26px;
+  margin-top: 4px;
+}
+
+.logbook .error {
+  color: var(--wax);
+  font-weight: 700;
+}
+
+/* The scroll: two wooden rolls and a sheet of parchment between them. */
+.scroll {
+  position: relative;
+  transform: rotate(1.2deg);
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.5));
+}
+
+.scroll-roll {
+  height: 22px;
+  margin: 0 -10px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #c99a5b, #7a4a22 55%, #4a2810);
+  box-shadow: inset 0 0 0 2px rgba(40, 20, 5, 0.4);
+}
+
+.scroll-body {
+  position: relative;
+  padding: 18px 22px 30px;
+  border-left: 1px solid rgba(90, 55, 20, 0.3);
+  border-right: 1px solid rgba(90, 55, 20, 0.3);
+}
+
+.scroll-body h3 {
+  margin: 0 0 10px;
+  font: 30px/1 var(--title-font);
+  color: var(--ink);
+  text-align: center;
+}
+
+.code {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.code li {
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(90, 55, 20, 0.35);
+}
+
+.code li:last-child {
+  border-bottom: 0;
+}
+
+.wax {
+  position: absolute;
+  right: 16px;
+  bottom: -18px;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50% 46% 52% 48%;
+  color: #ffd9cf;
+  font-size: 26px;
+  background: radial-gradient(circle at 35% 30%, #d2463a, var(--wax) 60%, #5e100a);
+  box-shadow: 0 4px 8px rgba(60, 5, 0, 0.5), inset 0 0 0 4px rgba(255, 255, 255, 0.08);
+  transform: rotate(-12deg);
+}
+
+@media (max-width: 860px) {
+  .voyage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .logbook {
+    padding: 22px 18px 18px;
+  }
+
+  .logbook h2 {
+    font-size: 36px;
+    padding-right: 80px;
+  }
+
+  .compass {
+    width: 70px;
+    height: 70px;
+  }
+}
