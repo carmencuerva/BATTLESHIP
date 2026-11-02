@@ -1,18 +1,24 @@
-// Sound effects, synthesised with the Web Audio API (no audio files to download).
+// Sound effects, synthesised with the Web Audio API (no audio files to download), and the
+// parrot's voice through the browser's own speech synthesis.
 // Purely decorative: every call is fire-and-forget and silently does nothing when sound is
-// off, unsupported, or not yet allowed by the browser (audio starts after a click).
+// off, unsupported, or before the player has touched the page (browsers' autoplay rules:
+// nothing may sound until a click, tap or key press).
 
-const STORE_KEY = "sound";
+import { load, save } from "./store.js";
+
 let ctx = null;
 let master = null;
 let noise = null;
-let muted = (() => {
-  try {
-    return localStorage.getItem(STORE_KEY) === "off";
-  } catch {
-    return false;
-  }
-})();
+let muted = load("sound", "off") !== "on"; // silent until the player turns it on
+let unlocked = false;
+
+// The first real gesture unlocks audio; until then every sound is a no-op.
+export function unlock() {
+  unlocked = true;
+}
+for (const type of ["pointerdown", "keydown"]) {
+  globalThis.addEventListener?.(type, unlock, { once: true, capture: true });
+}
 
 export function isMuted() {
   return muted;
@@ -20,16 +26,43 @@ export function isMuted() {
 
 export function setMuted(value) {
   muted = value;
-  try {
-    localStorage.setItem(STORE_KEY, value ? "off" : "on");
-  } catch {
-    // not persisted; fine
-  }
+  save("sound", value ? "off" : "on");
   if (master) master.gain.value = muted ? 0 : 0.5;
+  if (muted) globalThis.speechSynthesis?.cancel?.();
+}
+
+function pickVoice(synth, lang) {
+  const voices = (synth.getVoices?.() ?? []).filter((v) => v.lang?.toLowerCase().startsWith(lang));
+  return voices.find((v) => v.localService) ?? voices[0] ?? null;
+}
+
+// The parrot says `text` in a high, quick voice in `lang` ("es" or "en"). Returns false
+// when it cannot (sound off, no gesture yet, no speech engine or no voice for the
+// language), so the caller can squawk instead.
+export function speak(text, lang) {
+  if (muted || !unlocked || !text) return false;
+  const synth = globalThis.speechSynthesis;
+  const Utterance = globalThis.SpeechSynthesisUtterance;
+  if (!synth || !Utterance) return false;
+  try {
+    const voice = pickVoice(synth, lang);
+    if (!voice) return false;
+    synth.cancel(); // a new line replaces the old one instead of queueing behind it
+    const line = new Utterance(text);
+    line.voice = voice;
+    line.lang = voice.lang;
+    line.pitch = 1.9; // as high as voices go: a parrot
+    line.rate = 1.2;
+    line.volume = 0.9;
+    synth.speak(line);
+    return true;
+  } catch {
+    return false; // a broken speech engine must never stop the game
+  }
 }
 
 function audio() {
-  if (muted) return null;
+  if (muted || !unlocked) return null;
   if (!ctx) {
     const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!Context) return null;
@@ -85,9 +118,10 @@ function hiss({ dur = 0.4, filter = "lowpass", freq = 800, to = freq, q = 1, pea
   src.stop(start + dur + 0.05);
 }
 
-export const sfx = {
+const effects = {
   launch() {
-    tone({ freq: 110, to: 55, dur: 0.18, type: "triangle", peak: 0.5 }); // the cannon's thump
+    hiss({ dur: 0.4, filter: "lowpass", freq: 900, to: 110, peak: 0.55 }); // the cannon's boom
+    tone({ freq: 110, to: 55, dur: 0.18, type: "triangle", peak: 0.5 }); // and its thump
     hiss({ dur: 0.5, filter: "bandpass", freq: 500, to: 2600, q: 2.5, peak: 0.25 }); // whoosh
   },
   splash() {
@@ -127,10 +161,24 @@ export const sfx = {
     [392, 370, 349, 311].forEach((f, i) =>
       tone({ freq: f, to: f * 0.94, dur: i === 3 ? 1.1 : 0.42, type: "sawtooth", peak: 0.09, delay: 0.3 + i * 0.45 }),
     );
-    sfx.thunder(0);
+    effects.thunder(0);
   },
   thunder(delay = 0.15) {
     hiss({ dur: 2.4, filter: "lowpass", freq: 600, to: 60, peak: 0.6, delay });
     hiss({ dur: 0.25, filter: "highpass", freq: 2000, peak: 0.3, delay }); // the crack
   },
 };
+
+// Every effect is decorative: if the audio engine throws, the game carries on in silence.
+export const sfx = Object.fromEntries(
+  Object.entries(effects).map(([name, play]) => [
+    name,
+    (...args) => {
+      try {
+        play(...args);
+      } catch {
+        // no sound this time
+      }
+    },
+  ]),
+);

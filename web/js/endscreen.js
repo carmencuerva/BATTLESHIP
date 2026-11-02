@@ -2,7 +2,8 @@
 // storm). Shown once the game has a result; they never touch the game state.
 
 import { esc } from "./html.js";
-import { sfx } from "./sound.js";
+import { getLang } from "./i18n.js";
+import { sfx, speak } from "./sound.js";
 
 const COIN = `
 <svg viewBox="0 0 60 60" aria-hidden="true">
@@ -49,7 +50,12 @@ function sparklesHtml(count) {
 }
 
 // Heavy rain on a canvas; returns a stop function.
+function reducedMotion() {
+  return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
 function startRain(canvas) {
+  if (reducedMotion()) return () => {}; // a still, dark sky instead of moving rain
   const ctx = canvas.getContext("2d");
   let drops = [];
   let running = true;
@@ -96,6 +102,7 @@ function startRain(canvas) {
 
 // Lightning at random intervals; returns a stop function.
 function startLightning(overlay) {
+  if (reducedMotion()) return () => {}; // no flashes for people who asked for less motion
   let timer = null;
   function strike() {
     const bolt = overlay.querySelector(".bolt");
@@ -120,7 +127,7 @@ export function closeEndScreen() {
   setTimeout(() => overlay.remove(), 450);
 }
 
-// kind: "victory" | "defeat". labels: {title, sub, again, menu, boards}.
+// kind: "victory" | "defeat". labels: {title, sub, again, menu, boards, voice?}.
 export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   closeEndScreen();
   const overlay = document.createElement("div");
@@ -160,6 +167,7 @@ export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   const stops = [];
   if (victory) sfx.victory();
   else sfx.defeat();
+  const voice = setTimeout(() => speak(labels.voice, getLang()), 700);
   if (!victory) {
     stops.push(startRain(overlay.querySelector(".rain")));
     stops.push(startLightning(overlay));
@@ -169,6 +177,7 @@ export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   };
   addEventListener("keydown", onKey);
   stops.push(() => removeEventListener("keydown", onKey));
+  stops.push(() => clearTimeout(voice));
   active = { overlay, stops };
 
   overlay.querySelector('[data-act="again"]').addEventListener("click", () => {

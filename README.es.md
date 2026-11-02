@@ -78,6 +78,7 @@ Bots enviados (`players/custom/`):
 
 - Fuentes: [Pirata One](https://fonts.google.com/specimen/Pirata+One), [Bangers](https://fonts.google.com/specimen/Bangers) y [Nunito](https://fonts.google.com/specimen/Nunito), todas con la [SIL Open Font License 1.1](https://openfontlicense.org) y servidas por Google Fonts.
 - Los barcos, el loro, la rosa de los vientos, los sellos, los efectos y todos los sonidos los dibuja o sintetiza el propio código del proyecto (SVG, CSS, Web Audio).
+- La voz del loro es la síntesis de voz de tu propio navegador (`speechSynthesis`), con las voces instaladas en tu dispositivo; no se incluye ninguna grabación.
 - Las ilustraciones de los piratas de las pantallas finales y el sombrero (`web/img/`) las aportaron las personas que firman el proyecto.
 
 ## Licencia

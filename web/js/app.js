@@ -823,8 +823,8 @@ function addr(side) {
 
 function sayTurn() {
   const side = match.sides[match.attacker];
-  if (side.kind === "human") say("p_your_turn", { who: addr(side) }, { mood: "turn" });
-  else if (match.mode === "hvb") say("p_opp_turn", { name: side.name }, { mood: "turn" });
+  if (side.kind === "human") say("p_your_turn", { who: addr(side) }, { mood: "turn", voice: t("voice_turn") });
+  else if (match.mode === "hvb") say("p_opp_turn", { name: side.name }, { mood: "turn", voice: t("voice_opp_turn") });
   else say("p_turn_of", { name: side.name }, { mood: "turn" });
 }
 
@@ -836,9 +836,15 @@ function sayShot(attacker, defender, shot, result, promoted) {
   if (outcome === "sunk") lines.push(t("p_sunk_sub", { length }));
   if (promoted) lines.push(t("p_promoted", { name: attacker.typed || attacker.name, title: t(`title_${title(attacker)}`) }));
   const options = { mood: outcome, sub: lines.join(" · ") };
-  if (attacker.kind === "human") say(`p_${outcome}_you`, { who: addr(attacker) }, options);
-  else if (defender.kind === "human") say(`p_${outcome}_bot`, { name: attacker.name, who: addr(defender) }, options);
-  else say({ miss: "p_miss", hit: "p_hit", sunk: "p_sunk" }[outcome], {}, options);
+  // The parrot also says a short line out loud (see sound.speak).
+  if (attacker.kind === "human") {
+    const voice = outcome === "hit" ? `voice_hit_${title(attacker)}` : `voice_${outcome}${outcome === "sunk" ? "_you" : ""}`;
+    say(`p_${outcome}_you`, { who: addr(attacker) }, { ...options, voice: t(voice) });
+  } else if (defender.kind === "human") {
+    say(`p_${outcome}_bot`, { name: attacker.name, who: addr(defender) }, { ...options, voice: t(`voice_${outcome}_bot`) });
+  } else {
+    say({ miss: "p_miss", hit: "p_hit", sunk: "p_sunk" }[outcome], {}, { ...options, voice: t(`voice_${outcome}`) });
+  }
 }
 
 function leaveGame() {
@@ -1013,6 +1019,7 @@ function showEnd(m) {
       again: t("play_again"),
       menu: t("back_menu"),
       boards: t("end_boards"),
+      voice: t(kind === "victory" ? "voice_victory" : "voice_defeat"),
     },
     {
       onAgain: startMatch,
