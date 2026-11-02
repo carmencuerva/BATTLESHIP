@@ -2610,3 +2610,170 @@ progress {
   gap: 4px;
   font-size: 13px;
 }
+
+/* --- fleet placement: the boatswain's orders scroll and dragging ------------------------- */
+
+.orders {
+  --ink: #3b2610;
+  --ink-soft: #6b4a26;
+  --paper: #f1e2bd;
+  --paper-dark: #d9c08a;
+  --wax: #a8261c;
+  flex: 1 1 300px;
+  max-width: 420px;
+  transform: rotate(0.6deg);
+}
+
+.orders .scroll-body h3 {
+  font-size: 28px;
+}
+
+.orders h4 {
+  margin: 14px 0 8px;
+  font: 22px/1 var(--title-font);
+  color: var(--ink);
+}
+
+.orders-list {
+  font-size: 15px;
+}
+
+.orders .ship-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.orders .note {
+  margin-top: 0; /* first thing in the scroll, next to the board, so it is always seen */
+}
+
+.orders-list li {
+  padding: 6px 0;
+}
+
+.orders .ship-pick {
+  background: rgba(255, 250, 235, 0.65);
+  color: var(--ink);
+  border-color: rgba(90, 55, 20, 0.45);
+  box-shadow: 0 2px 0 rgba(90, 55, 20, 0.4);
+  cursor: grab;
+  touch-action: none;
+}
+
+.orders .ship-pick small {
+  color: #2f6b2a;
+  font-weight: 800;
+}
+
+.orders .ship-pick.placed {
+  opacity: 0.6;
+}
+
+.orders .ship-pick.selected {
+  border-color: var(--wax);
+  box-shadow: 0 0 0 3px var(--wax), 0 2px 0 rgba(90, 55, 20, 0.4);
+  opacity: 1;
+}
+
+.orders .orient {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.note {
+  min-height: 2.6em;
+  margin: 10px 0;
+  padding: 8px 10px 8px 36px;
+  position: relative;
+  border-radius: 8px;
+  color: var(--ink);
+  font-weight: 700;
+  background: rgba(255, 250, 235, 0.55);
+  border: 1.5px dashed rgba(90, 55, 20, 0.35);
+}
+
+.note::before {
+  content: "⚓";
+  position: absolute;
+  left: 10px;
+  top: 7px;
+}
+
+.note.warn {
+  color: var(--wax);
+  border-color: var(--wax);
+  background: rgba(255, 228, 220, 0.75);
+}
+
+.note.warn::before {
+  content: "☠";
+}
+
+.note.ok {
+  color: #2f6b2a;
+  border-color: #2f6b2a;
+}
+
+.note.ok::before {
+  content: "✔";
+}
+
+.placement .board-grid {
+  touch-action: none; /* dragging a ship must not scroll the page */
+}
+
+.placement .place-layout {
+  align-items: flex-start;
+}
+
+.drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: 0.85;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.45));
+}
+
+.drag-ghost .mini-ship {
+  height: 30px;
+  width: calc(var(--len) * 20px);
+}
+
+body.dragging-ship,
+body.dragging-ship * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+@media (max-width: 860px) {
+  /* On a phone the hold sits right under the board, so a ship can be dragged in view. */
+  .orders {
+    max-width: none;
+    transform: none;
+  }
+
+  .orders .scroll-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .orders .note {
+    order: -2;
+  }
+
+  .orders .orders-hold {
+    order: -1;
+  }
+
+  .orders .ship-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .orders .orders-how h3 {
+    margin-top: 14px;
+  }
+}

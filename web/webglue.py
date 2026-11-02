@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,36 @@ def defaults() -> str:
     return _out({"size": game.DEFAULT_SIZE, "fleet": list(game.DEFAULT_FLEET)})
 
 
+# The engine explains a bad fleet or placement in plain English. The page needs to say it
+# in its own words (and language), so each known reason becomes a small code plus the cell
+# involved. tests/test_webglue.py pins these patterns to the engine's actual messages.
+_PROBLEMS = [
+    ("off_board", re.compile(r"goes off the board at \[(-?\d+), (-?\d+)\]")),
+    ("overlap", re.compile(r"overlaps ship \d+ at \[(\d+), (\d+)\]")),
+    ("touch", re.compile(r"touches ship \d+ near \[(\d+), (\d+)\]")),
+    ("too_long", re.compile(r"ship of length (\d+) does not fit")),
+    ("too_dense", re.compile(r"is too dense for")),
+    ("no_room", re.compile(r"could not fit fleet")),
+]
+
+
+def _problem(reason: str | None) -> dict[str, Any] | None:
+    """``{"code", "cell"?, "length"?}`` for a reason, or ``{"code": "other"}``."""
+    if reason is None:
+        return None
+    for code, pattern in _PROBLEMS:
+        match = pattern.search(reason)
+        if not match:
+            continue
+        found: dict[str, Any] = {"code": code}
+        if code in ("off_board", "overlap", "touch"):
+            found["cell"] = [int(match.group(1)), int(match.group(2))]
+        elif code == "too_long":
+            found["length"] = int(match.group(1))
+        return found
+    return {"code": "other"}
+
+
 def _fleet_problem(size: Any, fleet: Any) -> str | None:
     reason = game.validate_fleet(size, fleet)
     if not reason:
@@ -60,9 +91,12 @@ def _fleet_problem(size: Any, fleet: Any) -> str | None:
 
 
 def check_fleet(size: str, fleet: str) -> str:
-    """``{"ok", "reason"}`` for a custom board size and fleet (tries a real placement)."""
+    """``{"ok", "reason", "problem"}`` for a custom board size and fleet.
+
+    Tries a real placement. ``problem`` is the reason as a code (see ``_problem``).
+    """
     reason = _fleet_problem(_in(size), _in(fleet))
-    return _out({"ok": reason is None, "reason": reason})
+    return _out({"ok": reason is None, "reason": reason, "problem": _problem(reason)})
 
 
 def list_players() -> str:
@@ -135,8 +169,9 @@ def bot_shot(handle: str, view: str) -> str:
 def layout(size: str, fleet: str, placement: str) -> str:
     """Check a partial placement (``null`` for ships not placed yet).
 
-    Returns ``{"ships": [cells | null], "ok", "reason", "complete"}``; ``ok`` judges only
-    the ships placed so far, so the editor can colour a hover preview.
+    Returns ``{"ships": [cells | null], "ok", "reason", "problem", "complete"}``; ``ok``
+    judges only the ships placed so far, so the editor can colour a hover preview, and
+    ``problem`` is the reason as a code (see ``_problem``).
     """
     size_, fleet_, placement_ = _in(size), _in(fleet), _in(placement)
     placed = [i for i, entry in enumerate(placement_) if entry is not None]
@@ -153,6 +188,7 @@ def layout(size: str, fleet: str, placement: str) -> str:
             "ships": ships,
             "ok": reason is None,
             "reason": reason,
+            "problem": _problem(reason),
             "complete": reason is None and len(placed) == len(fleet_),
         }
     )

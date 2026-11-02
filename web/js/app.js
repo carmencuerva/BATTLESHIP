@@ -56,6 +56,7 @@ function show(render) {
   current = render;
   keyHandler = null;
   render();
+  scrollTo(0, 0); // a new screen starts at its top, not where the last one was scrolled to
 }
 
 document.addEventListener("keydown", (event) => keyHandler?.(event));
@@ -219,7 +220,7 @@ function menuScreen() {
     }
     const check = arena.call("check_fleet", settings.size, settings.fleet);
     if (!check.ok) {
-      app.querySelector("#menu-error").textContent = t("bad_fleet", { reason: check.reason });
+      app.querySelector("#menu-error").textContent = problemText(check.problem, check.reason);
       return;
     }
     startMatch();
@@ -484,10 +485,26 @@ function nextPlacement() {
 
 // --- placement editor -------------------------------------------------------------------
 
+// Pirate wording for a bad fleet or placement. The codes come from webglue (Python); this
+// only picks the sentence and fills in the cell as "C7".
+function problemText(problem, reason = "") {
+  if (!problem) return "";
+  const vars = { reason, length: problem.length ?? "" };
+  if (problem.cell) {
+    const [r, c] = problem.cell;
+    vars.cell = r >= 0 && c >= 0 && c < MAX_COLUMNS ? coord(r, c) : "?";
+  }
+  return t(`why_${problem.code}`, vars);
+}
+
 function placementScreen(i) {
   const side = match.sides[i];
   const { size, fleet } = match;
-  const ed = { placement: fleet.map(() => null), selected: 0, orient: "H", hover: null, message: "" };
+  // drag: {k, x0, y0, moved, fromBoard} while a ship is being dragged.
+  const ed = { placement: fleet.map(() => null), selected: 0, orient: "H", hover: null, problem: null, drag: null };
+  let ghost = null;
+  let swallowClick = false; // the click that ends a drag must not also place or pick up
+  let quiet = null; // "r,c" where a ship was just put down: no preview there until the pointer moves on
 
   const layout = (placement) => arena.call("layout", size, fleet, placement);
   const nextUnplaced = () => {
@@ -500,6 +517,28 @@ function placementScreen(i) {
     placement[ed.selected] = [ed.hover[0], ed.hover[1], ed.orient];
     return placement;
   };
+  const setHover = (at) => {
+    const key = at ? `${at[0]},${at[1]}` : null;
+    if (key === quiet) at = null; // the pointer still rests on the ship it just placed
+    else quiet = null;
+    if (at === ed.hover || (at && ed.hover && at[0] === ed.hover[0] && at[1] === ed.hover[1])) return;
+    ed.hover = at;
+    drawBoard();
+  };
+
+  // The note in the scroll: why the ship under the cursor cannot go there, the last
+  // refusal, or what to do next.
+  function drawNote(preview, complete) {
+    const note = app.querySelector("#place-note");
+    const problem = preview && !preview.ok ? preview.problem : ed.problem;
+    note.className = `note ${problem ? "warn" : complete ? "ok" : ""}`;
+    if (problem) note.textContent = problemText(problem, preview?.reason ?? "");
+    else if (complete) note.textContent = t("place_done");
+    else if (ed.selected !== null) {
+      const orient = t(ed.orient === "H" ? "horizontal" : "vertical");
+      note.textContent = t("place_next", { length: fleet[ed.selected], orient });
+    } else note.textContent = "";
+  }
 
   function drawBoard() {
     const base = layout(ed.placement);
@@ -507,41 +546,39 @@ function placementScreen(i) {
     let preview = null;
     if (cand) {
       const result = layout(cand);
-      preview = { cells: result.ships[ed.selected] ?? [], ok: result.ok, reason: result.reason };
+      preview = { cells: result.ships[ed.selected] ?? [], ok: result.ok, problem: result.problem, reason: result.reason };
     }
     renderBoard(app.querySelector("#place-board"), {
       size,
       fleet: base.ships.filter(Boolean),
       preview,
       clickable: true,
-      onHover: (r, c) => {
-        if (ed.hover && ed.hover[0] === r && ed.hover[1] === c) return;
-        ed.hover = [r, c];
-        drawBoard();
-      },
-      onLeave: () => {
-        ed.hover = null;
-        drawBoard();
-      },
+      onHover: (r, c) => ed.drag || setHover([r, c]),
+      onLeave: () => ed.drag || setHover(null),
       onContext: rotate,
-      onClick: (r, c) => click(r, c, base, preview),
+      onClick: (r, c) => {
+        if (swallowClick) return;
+        click(r, c, base, preview);
+      },
     });
     app.querySelector("#ready").disabled = !base.complete;
-    app.querySelector("#place-msg").textContent = ed.message;
+    drawNote(preview, base.complete);
   }
 
   function click(r, c, base, preview) {
     const owner = base.ships.findIndex((cells) => cells?.some(([x, y]) => x === r && y === c));
     if (owner !== -1) {
-      ed.placement[owner] = null;
+      ed.placement[owner] = null; // back to the hold
       ed.selected = owner;
-      ed.message = "";
+      ed.problem = null;
     } else if (ed.selected !== null && preview?.ok) {
       ed.placement[ed.selected] = [r, c, ed.orient];
       ed.selected = nextUnplaced();
-      ed.message = "";
+      ed.problem = null;
+      ed.hover = null;
+      quiet = `${r},${c}`;
     } else if (preview && !preview.ok) {
-      ed.message = preview.reason ?? "";
+      ed.problem = preview.problem;
     }
     drawAll();
   }
@@ -551,50 +588,171 @@ function placementScreen(i) {
     drawAll();
   }
 
+  // --- dragging (mouse, pen and touch alike, through pointer events) ---
+
+  function startDrag(k, event, fromBoard) {
+    if (event.button > 0) return; // right click rotates instead
+    // Touch captures the pointer on the pressed element; it is redrawn while dragging, so
+    // let go of the capture (the drag listens on the window) or the browser cancels it.
+    try {
+      event.target.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // no capture to release
+    }
+    ed.drag = { k, x0: event.clientX, y0: event.clientY, moved: false, fromBoard, pointer: event.pointerId };
+    addEventListener("pointermove", onDragMove);
+    addEventListener("pointerup", onDragEnd);
+    addEventListener("pointercancel", onDragEnd);
+  }
+
+  function onDragMove(event) {
+    const drag = ed.drag;
+    if (!drag || event.pointerId !== drag.pointer) return;
+    if (!drag.moved) {
+      if (Math.hypot(event.clientX - drag.x0, event.clientY - drag.y0) < 6) return; // still a tap
+      drag.moved = true;
+      if (drag.fromBoard) ed.placement[drag.k] = null;
+      ed.selected = drag.k;
+      ed.problem = null;
+      ghost = document.createElement("div");
+      ghost.className = "drag-ghost";
+      ghost.innerHTML = miniShip(fleet[drag.k]);
+      document.body.appendChild(ghost);
+      document.body.classList.add("dragging-ship");
+      drawAll();
+    }
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    ghost.style.transform = `translate(${drag.x + 14}px, ${drag.y + 14}px)`;
+    aimAt(drag.x, drag.y);
+    if (!drag.scrolling) {
+      drag.scrolling = true;
+      requestAnimationFrame(edgeScroll);
+    }
+  }
+
+  function aimAt(x, y) {
+    const cell = document.elementFromPoint(x, y)?.closest("#place-board .cell");
+    setHover(cell ? [Number(cell.dataset.r), Number(cell.dataset.c)] : null);
+  }
+
+  // While a finger rests near the top or bottom of the screen, keep scrolling (a still
+  // finger sends no events) so the board can be reached on a phone.
+  function edgeScroll() {
+    const drag = ed.drag;
+    if (!drag) return;
+    const edge = 70;
+    let step = 0;
+    if (drag.y < edge) step = -Math.ceil((edge - drag.y) / 3);
+    else if (drag.y > innerHeight - edge) step = Math.ceil((drag.y - innerHeight + edge) / 3);
+    if (step) {
+      scrollBy(0, step);
+      aimAt(drag.x, drag.y); // the page moved under the finger
+    }
+    requestAnimationFrame(edgeScroll);
+  }
+
+  function onDragEnd(event) {
+    if (ed.drag && event.pointerId !== ed.drag.pointer) return;
+    removeEventListener("pointermove", onDragMove);
+    removeEventListener("pointerup", onDragEnd);
+    removeEventListener("pointercancel", onDragEnd);
+    const drag = ed.drag;
+    ed.drag = null;
+    ghost?.remove();
+    ghost = null;
+    document.body.classList.remove("dragging-ship");
+    if (!drag?.moved) return; // a tap: the normal click handlers take it from here
+    swallowClick = true;
+    setTimeout(() => (swallowClick = false), 0);
+    const cand = candidate();
+    if (cand) {
+      const result = layout(cand);
+      if (result.ok) {
+        ed.placement[drag.k] = [ed.hover[0], ed.hover[1], ed.orient];
+        ed.selected = nextUnplaced();
+        quiet = `${ed.hover[0]},${ed.hover[1]}`;
+      } else {
+        ed.problem = result.problem; // explained in the scroll; the ship stays in the hold
+      }
+    }
+    ed.hover = null;
+    drawAll();
+  }
+
   function drawAll() {
     const ships = fleet
       .map((length, k) => {
-        const classes = ["ship-pick", ed.placement[k] ? "placed" : "", ed.selected === k ? "selected" : ""];
-        return `<button class="${classes.join(" ")}" data-k="${k}">${miniShip(length)}<span>${length}</span></button>`;
+        const placed = Boolean(ed.placement[k]);
+        const classes = ["ship-pick", placed ? "placed" : "", ed.selected === k ? "selected" : ""];
+        const afloat = placed ? `<small>✓ ${th("in_water")}</small>` : "";
+        return `<button class="${classes.join(" ")}" data-k="${k}">${miniShip(length)}<span>${length}</span>${afloat}</button>`;
       })
       .join("");
     app.innerHTML = `
       <section class="panel placement">
         <h2>${th("place_title", { name: side.name })}</h2>
-        <p class="help">${th("place_help")}</p>
         <div class="place-layout">
           <div class="board-frame"><div id="place-board"></div></div>
-          <div class="side">
-            <div class="ship-list">${ships}</div>
-            <p>${th(ed.orient === "H" ? "horizontal" : "vertical")}</p>
-            <div class="buttons">
-              <button id="rotate">${th("rotate")} (R)</button>
-              <button id="random">${th("random")}</button>
-              <button id="clear">${th("clear")}</button>
+          <aside class="scroll orders">
+            <div class="scroll-roll top"></div>
+            <div class="scroll-body">
+              <p id="place-note" class="note" role="status" aria-live="polite"></p>
+              <div class="orders-how">
+                <h3>${th("orders_title")}</h3>
+                <ol class="code orders-list">
+                  <li>${th("order_drag")}</li>
+                  <li>${th("order_rotate")}</li>
+                  <li>${th("order_move")}</li>
+                  <li>${th("order_rule")}</li>
+                </ol>
+              </div>
+              <div class="orders-hold">
+                <h4>${th("hold_title")}</h4>
+                <div class="ship-list">${ships}</div>
+                <p class="orient">${th(ed.orient === "H" ? "horizontal" : "vertical")}</p>
+                <div class="buttons">
+                  <button id="rotate">${th("rotate")} (R)</button>
+                  <button id="random">${th("random")}</button>
+                  <button id="clear">${th("clear")}</button>
+                </div>
+                <button id="ready" class="primary board-button">${th("ready")}</button>
+              </div>
             </div>
-            <button id="ready" class="primary">${th("ready")}</button>
-            <p id="place-msg" class="error"></p>
-          </div>
+            <div class="scroll-roll bottom"></div>
+          </aside>
         </div>
       </section>`;
-    app.querySelectorAll(".ship-pick").forEach((button) =>
+    app.querySelectorAll(".ship-pick").forEach((button) => {
+      const k = Number(button.dataset.k);
+      button.addEventListener("pointerdown", (event) => startDrag(k, event, Boolean(ed.placement[k])));
       button.addEventListener("click", () => {
-        const k = Number(button.dataset.k);
+        if (swallowClick) return;
         ed.placement[k] = null;
         ed.selected = k;
+        ed.problem = null;
         drawAll();
-      }),
-    );
+      });
+    });
+    app.querySelector("#place-board").addEventListener("pointerdown", (event) => {
+      const cell = event.target.closest(".cell");
+      if (!cell) return;
+      const r = Number(cell.dataset.r);
+      const c = Number(cell.dataset.c);
+      const owner = layout(ed.placement).ships.findIndex((cells) => cells?.some(([x, y]) => x === r && y === c));
+      if (owner !== -1) startDrag(owner, event, true);
+    });
     app.querySelector("#rotate").addEventListener("click", rotate);
     app.querySelector("#random").addEventListener("click", () => {
       ed.placement = arena.call("random_layout", size, fleet, randomSeed());
       ed.selected = null;
-      ed.message = "";
+      ed.problem = null;
       drawAll();
     });
     app.querySelector("#clear").addEventListener("click", () => {
       ed.placement = fleet.map(() => null);
       ed.selected = 0;
+      ed.problem = null;
       drawAll();
     });
     app.querySelector("#ready").addEventListener("click", () => {

@@ -48,9 +48,14 @@ def test_defaults_and_players():
 
 
 def test_check_fleet():
-    assert call("check_fleet", 10, [5, 4, 3, 3, 2]) == {"ok": True, "reason": None}
-    assert call("check_fleet", 3, [3, 3, 3])["ok"] is False
-    assert call("check_fleet", 2, [1, 1])["ok"] is False  # passes the bound, cannot fit
+    ok = call("check_fleet", 10, [5, 4, 3, 3, 2])
+    assert ok == {"ok": True, "reason": None, "problem": None}
+    dense = call("check_fleet", 3, [3, 3, 3])
+    assert dense["ok"] is False and dense["problem"] == {"code": "too_dense"}
+    no_room = call("check_fleet", 2, [1, 1])  # passes the bound, cannot fit
+    assert no_room["ok"] is False and no_room["problem"] == {"code": "no_room"}
+    too_long = call("check_fleet", 4, [5])
+    assert too_long["problem"] == {"code": "too_long", "length": 5}
 
 
 def test_bots_through_handles():
@@ -69,13 +74,26 @@ def test_bots_through_handles():
 def test_layout_of_partial_placements():
     fleet = list(DEFAULT_FLEET)
     empty = call("layout", 10, fleet, [None] * 5)
-    assert empty == {"ships": [None] * 5, "ok": True, "reason": None, "complete": False}
+    assert empty == {
+        "ships": [None] * 5,
+        "ok": True,
+        "reason": None,
+        "problem": None,
+        "complete": False,
+    }
     one = call("layout", 10, fleet, [[0, 0, "H"], None, None, None, None])
     assert one["ships"][0] == [[0, c] for c in range(5)] and one["ok"]
     touching = call("layout", 10, fleet, [[0, 0, "H"], [1, 0, "H"], None, None, None])
     assert not touching["ok"] and "touches" in touching["reason"]
+    assert touching["problem"]["code"] == "touch" and touching["problem"]["cell"][0] in (0, 1)
+    diagonal = call("layout", 10, fleet, [[0, 0, "H"], None, None, None, [1, 5, "H"]])
+    assert diagonal["problem"]["code"] == "touch"
     off = call("layout", 10, fleet, [[0, 8, "H"], None, None, None, None])
     assert not off["ok"] and off["ships"][0] == [[0, 8], [0, 9]]
+    assert off["problem"] == {"code": "off_board", "cell": [0, 10]}
+    overlap = call("layout", 10, fleet, [[0, 0, "H"], [0, 2, "V"], None, None, None])
+    assert overlap["problem"] == {"code": "overlap", "cell": [0, 2]}
+    assert one["problem"] is None
     assert call("layout", 10, fleet, STACKED)["complete"] is True
 
 
