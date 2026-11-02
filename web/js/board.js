@@ -22,12 +22,10 @@ const FLAME = `
 
 const CROSSHAIR = `
   <svg viewBox="0 0 100 100" aria-hidden="true">
-    <g class="ring-outer"><circle cx="50" cy="50" r="44"/>
-      <path d="M50 2 v10 M50 88 v10 M2 50 h10 M88 50 h10" stroke-width="5"/></g>
-    <circle cx="50" cy="50" r="29"/>
-    <circle cx="50" cy="50" r="14"/>
-    <path d="M50 14 V38 M50 62 V86 M14 50 H38 M62 50 H86" stroke-width="3"/>
-    <circle cx="50" cy="50" r="2.6" class="dot"/>
+    <g class="ring-outer"><circle cx="50" cy="50" r="44" stroke-dasharray="20 7.6"/></g>
+    <circle cx="50" cy="50" r="20"/>
+    <path d="M50 2 V34 M50 66 V98 M2 50 H34 M66 50 H98"/>
+    <circle cx="50" cy="50" r="3" class="dot"/>
   </svg>`;
 
 function key(r, c) {
@@ -47,10 +45,38 @@ function shipHtml(cells, classes, theme) {
   return `<div class="ship ${orientation === "V" ? "vertical" : "horizontal"} ${classes}" style="${area}">${shipSvg(length, orientation, theme)}</div>`;
 }
 
+// Centres `el` over `cell` (both inside the cells layer).
+function placeOver(el, cell, top = false) {
+  el.style.left = `${cell.offsetLeft + cell.offsetWidth / 2}px`;
+  el.style.top = `${top ? cell.offsetTop : cell.offsetTop + cell.offsetHeight / 2}px`;
+}
+
+// Touch screens have no hover: the first tap picks a cell (opts.pending) and pins the
+// sight on it with a hint; tapping it again fires.
+function pinPending(container) {
+  const opts = container._opts;
+  if (!opts?.pending) return false;
+  const cell = container.querySelector(`.cell[data-r="${opts.pending[0]}"][data-c="${opts.pending[1]}"]`);
+  const sight = container.querySelector(".crosshair");
+  const tag = container.querySelector(".coord-tag");
+  if (!cell) return false;
+  if (sight) {
+    placeOver(sight, cell);
+    sight.classList.add("on", "pinned");
+  }
+  if (tag) {
+    tag.textContent = opts.pendingHint ? `${toCoord(...opts.pending)} · ${opts.pendingHint}` : toCoord(...opts.pending);
+    placeOver(tag, cell, true);
+    tag.classList.add("on");
+  }
+  return true;
+}
+
 // opts: {size, view?, fleet? (ships to draw), sunk? (sunk ships to draw), theme?,
 //        hints?, heat?, preview? {cells, ok}, last? [r, c], clickable?, crosshair?,
+//        pending? [r, c] and pendingHint? (a touch target waiting for its second tap),
 //        fresh? {cell: [r, c], outcome} (animate the shot that just landed),
-//        onClick?(r, c), onHover?(r, c), onLeave?(), onContext?()}
+//        onClick?(r, c, {touch}), onHover?(r, c), onLeave?(), onContext?()}
 export function renderBoard(container, opts) {
   const { size } = opts;
   const theme = opts.theme ?? "light";
@@ -128,8 +154,9 @@ export function renderBoard(container, opts) {
         <div class="coord-tag" aria-hidden="true"></div>
         ${opts.crosshair ? `<div class="crosshair">${CROSSHAIR}</div>` : ""}</div>
     </div>`;
-
   container._opts = opts;
+  pinPending(container);
+
   if (!container._wired) {
     container._wired = true;
     const target = (event) => {
@@ -149,8 +176,7 @@ export function renderBoard(container, opts) {
       container.querySelector(`.labels-cols [data-c="${c}"]`)?.classList.add("hot");
       container.querySelector(`.labels-rows [data-r="${r}"]`)?.classList.add("hot");
       tag.textContent = toCoord(r, c);
-      tag.style.left = `${cell.offsetLeft + cell.offsetWidth / 2}px`;
-      tag.style.top = `${cell.offsetTop}px`;
+      placeOver(tag, cell, true);
       tag.classList.add("on");
     };
     const aim = (cell) => {
@@ -161,24 +187,35 @@ export function renderBoard(container, opts) {
         sight.classList.remove("on");
         return;
       }
-      sight.style.left = `${cell.offsetLeft + cell.offsetWidth / 2}px`;
-      sight.style.top = `${cell.offsetTop + cell.offsetHeight / 2}px`;
+      placeOver(sight, cell);
       sight.classList.add("on");
     };
+    // Remember whether the last press was a finger, so a tap can ask for confirmation.
+    container.addEventListener("pointerdown", (event) => {
+      container._lastPointer = event.pointerType;
+    });
     container.addEventListener("click", (event) => {
       if (container.classList.contains("locked")) return;
       const at = target(event);
-      if (at) container._opts.onClick?.(...at);
+      if (at) container._opts.onClick?.(...at, { touch: container._lastPointer === "touch" });
     });
     container.addEventListener("mouseover", (event) => {
-      mark(event.target.closest(".cell"));
-      aim(event.target.closest(".cell"));
+      const cell = event.target.closest(".cell");
+      // Touch browsers send emulated mouseovers (even at stale positions) after a tap:
+      // with a target picked by finger, the sight and its label stay on that target.
+      if (container._lastPointer === "touch" && container._opts.pending) {
+        pinPending(container);
+        return;
+      }
+      mark(cell);
+      aim(cell);
       const at = target(event);
       if (at) container._opts.onHover?.(...at);
     });
     container.addEventListener("mouseleave", () => {
       mark(null);
       aim(null);
+      pinPending(container); // a picked touch target stays marked
       container._opts.onLeave?.();
     });
     container.addEventListener("contextmenu", (event) => {

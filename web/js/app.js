@@ -457,6 +457,7 @@ function startMatch() {
     over: null,
     locked: false, // hot-seat: waiting for the device to change hands
     busy: false, // a missile is in the air
+    pending: null, // touch: the cell picked by a first tap, fired by a second
     fresh: null, // the shot to animate on the next draw
     endShown: false,
     hints: true,
@@ -967,11 +968,18 @@ function botTurn() {
   fire(res.shot);
 }
 
-function humanShot(r, c, view) {
+function humanShot(r, c, view, how = {}) {
   const me = match.viewer;
   if (match.over || match.locked || match.busy) return;
   if (match.attacker !== me || match.sides[me].kind !== "human") return;
   if (view.cells[r][c] !== UNKNOWN) return;
+  // A finger cannot hover: the first tap only picks the cell, a second tap on it fires.
+  if (how.touch && !(match.pending && match.pending[0] === r && match.pending[1] === c)) {
+    match.pending = [r, c];
+    gameScreen();
+    return;
+  }
+  match.pending = null;
   fire([r, c]);
 }
 
@@ -1135,7 +1143,9 @@ function gameScreen() {
       fresh: freshFor(right),
       clickable: myTurn,
       crosshair: myTurn,
-      onClick: (r, c) => humanShot(r, c, status[right].view),
+      pending: myTurn ? match.pending : null,
+      pendingHint: t("tap_again"),
+      onClick: (r, c, how) => humanShot(r, c, status[right].view, how),
     });
   }
   for (const [side, id] of [

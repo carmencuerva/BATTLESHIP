@@ -125,3 +125,13 @@ test("a championship leaderboard shows its bracket and champion", () => {
   assert.equal(count(html, "ko-side won"), 1);
   assert.match(html, /🏆/);
 });
+
+test("a pending touch target renders a sight and never breaks off-page", () => {
+  const box = { ...fakeContainer(), querySelector: () => null }; // not laid out yet
+  const size = 3;
+  const cells = Array.from({ length: size }, () => Array(size).fill(0));
+  renderBoard(box, { size, view: { size, cells, remaining: [2] }, clickable: true, crosshair: true, pending: [1, 1], pendingHint: "tap again" });
+  assert.equal(count(box.innerHTML, 'class="crosshair"'), 1);
+  assert.equal(count(box.innerHTML, 'class="coord-tag"'), 1);
+  assert.deepEqual(box._opts.pending, [1, 1]);
+});
