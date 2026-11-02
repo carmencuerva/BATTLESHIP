@@ -3,6 +3,7 @@
 
 import { startArena } from "../pyodide-bootstrap.js";
 import { cellRect, coord, lockBoard, renderBoard, UNKNOWN } from "./board.js";
+import { MAX_COLUMNS } from "./coords.js";
 import { closeEndScreen, showEndScreen } from "./endscreen.js";
 import { bubbles, explode, launchMissile, splash } from "./fx.js";
 import { esc, th } from "./html.js";
@@ -212,6 +213,10 @@ function menuScreen() {
   );
   app.querySelector("#start").addEventListener("click", () => {
     readForm();
+    if (!(settings.size <= MAX_COLUMNS)) {
+      app.querySelector("#menu-error").textContent = t("too_wide", { max: MAX_COLUMNS });
+      return;
+    }
     const check = arena.call("check_fleet", settings.size, settings.fleet);
     if (!check.ok) {
       app.querySelector("#menu-error").textContent = t("bad_fleet", { reason: check.reason });
@@ -666,18 +671,15 @@ function sayTurn() {
 
 // The parrot's line for a shot: it speaks to the human who fired, or warns the human who
 // was fired at, or (bot v bot) just calls it.
-function sayShot(attacker, defender, result, promoted) {
+function sayShot(attacker, defender, shot, result, promoted) {
   const { outcome, length } = result;
-  const lengthSub = outcome === "sunk" ? t("p_sunk_sub", { length }) : undefined;
-  const mood = outcome === "miss" ? "miss" : outcome;
-  if (attacker.kind === "human") {
-    const sub = promoted ? `${lengthSub} · ${t("p_promoted", { name: attacker.typed || attacker.name, title: t(`title_${title(attacker)}`) })}` : lengthSub;
-    say(`p_${outcome}_you`, { who: addr(attacker) }, { mood, sub });
-  } else if (defender.kind === "human") {
-    say(`p_${outcome}_bot`, { name: attacker.name, who: addr(defender) }, { mood, sub: lengthSub });
-  } else {
-    say({ miss: "p_miss", hit: "p_hit", sunk: "p_sunk" }[outcome], {}, { mood, sub: lengthSub });
-  }
+  const lines = [t("p_shot_at", { cell: coord(...shot) })];
+  if (outcome === "sunk") lines.push(t("p_sunk_sub", { length }));
+  if (promoted) lines.push(t("p_promoted", { name: attacker.typed || attacker.name, title: t(`title_${title(attacker)}`) }));
+  const options = { mood: outcome, sub: lines.join(" · ") };
+  if (attacker.kind === "human") say(`p_${outcome}_you`, { who: addr(attacker) }, options);
+  else if (defender.kind === "human") say(`p_${outcome}_bot`, { name: attacker.name, who: addr(defender) }, options);
+  else say({ miss: "p_miss", hit: "p_hit", sunk: "p_sunk" }[outcome], {}, options);
 }
 
 function leaveGame() {
@@ -764,7 +766,7 @@ async function fire(shot) {
   const shooter = m.sides[a];
   const promoted = outcome === "sunk" && shooter.kind === "human" && shooter.rank === "deckhand";
   if (promoted) shooter.rank = "captain";
-  sayShot(shooter, m.sides[d], res.result, promoted);
+  sayShot(shooter, m.sides[d], shot, res.result, promoted);
 
   if (res.terminal) {
     stopMatch();

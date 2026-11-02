@@ -3,6 +3,8 @@
 ## The game
 
 - Each player has a square board, 10×10 by default. Rows and columns are numbered from 0.
+  The web page labels them like a board game instead, with letters for columns and
+  numbers for rows: `C7` is column 2, row 6, so the cell `(6, 2)` your bot returns.
 - Each player places the same fleet. The default fleet has ship lengths **5, 4, 3, 3, 2**.
   Board size and fleet are configurable.
 - Ships are straight lines, either horizontal or vertical. They must lie fully on the

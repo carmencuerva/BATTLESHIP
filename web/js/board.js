@@ -1,6 +1,7 @@
 // Draws a board: an ocean grid, illustrated ships underneath, shot marks on top.
 // Pure presentation: every state shown here was computed in Python.
 
+import { columnLabel, rowLabel, toCoord } from "./coords.js";
 import { shipPlacement, shipSvg } from "./ships.js";
 
 // Cell codes of battleship.game views (data format, not rules).
@@ -9,12 +10,8 @@ export const MISS = 1;
 export const HIT = 2;
 export const SUNK = 3;
 
-const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-// "B7"-style names, still used by the ship's log.
-export function coord(row, col) {
-  return `${LETTERS[col] ?? col}${row + 1}`;
-}
+// "C7"-style names (see coords.js), used by the messages and the ship's log.
+export const coord = toCoord;
 
 const FLAME = `
   <svg class="flame" viewBox="0 0 40 50" aria-hidden="true">
@@ -112,16 +109,25 @@ export function renderBoard(container, opts) {
     }
   }
 
-  container.classList.add("board", "ocean");
+  // Like a board game: letters above the columns, numbers beside the rows, the sea inside.
+  container.classList.add("board-grid");
   container.classList.toggle("aiming", Boolean(opts.crosshair));
   container.classList.remove("locked");
   container.style.setProperty("--size", size);
   const columns = `repeat(${size}, var(--cell))`;
+  const colLabels = Array.from({ length: size }, (_, c) => `<span data-c="${c}">${columnLabel(c)}</span>`).join("");
+  const rowLabels = Array.from({ length: size }, (_, r) => `<span data-r="${r}">${rowLabel(r)}</span>`).join("");
   container.innerHTML = `
-    <div class="waves" aria-hidden="true"></div>
-    <div class="ships-layer" style="grid-template-columns:${columns};grid-template-rows:${columns}">${shipParts.join("")}</div>
-    <div class="cells-layer" style="grid-template-columns:${columns}">${cellParts.join("")}
-      ${opts.crosshair ? `<div class="crosshair">${CROSSHAIR}</div>` : ""}</div>`;
+    <span class="labels-corner" aria-hidden="true"></span>
+    <div class="labels-cols" aria-hidden="true" style="grid-template-columns:${columns}">${colLabels}</div>
+    <div class="labels-rows" aria-hidden="true" style="grid-template-rows:${columns}">${rowLabels}</div>
+    <div class="board ocean">
+      <div class="waves" aria-hidden="true"></div>
+      <div class="ships-layer" style="grid-template-columns:${columns};grid-template-rows:${columns}">${shipParts.join("")}</div>
+      <div class="cells-layer" style="grid-template-columns:${columns}">${cellParts.join("")}
+        <div class="coord-tag" aria-hidden="true"></div>
+        ${opts.crosshair ? `<div class="crosshair">${CROSSHAIR}</div>` : ""}</div>
+    </div>`;
 
   container._opts = opts;
   if (!container._wired) {
@@ -129,6 +135,23 @@ export function renderBoard(container, opts) {
     const target = (event) => {
       const cell = event.target.closest(".cell");
       return cell ? [Number(cell.dataset.r), Number(cell.dataset.c)] : null;
+    };
+    // Hovering a cell lights up its letter and number and shows its name ("C7").
+    const mark = (cell) => {
+      for (const label of container.querySelectorAll(".labels-cols .hot, .labels-rows .hot")) label.classList.remove("hot");
+      const tag = container.querySelector(".coord-tag");
+      if (!cell || !tag) {
+        tag?.classList.remove("on");
+        return;
+      }
+      const r = Number(cell.dataset.r);
+      const c = Number(cell.dataset.c);
+      container.querySelector(`.labels-cols [data-c="${c}"]`)?.classList.add("hot");
+      container.querySelector(`.labels-rows [data-r="${r}"]`)?.classList.add("hot");
+      tag.textContent = toCoord(r, c);
+      tag.style.left = `${cell.offsetLeft + cell.offsetWidth / 2}px`;
+      tag.style.top = `${cell.offsetTop}px`;
+      tag.classList.add("on");
     };
     const aim = (cell) => {
       const sight = container.querySelector(".crosshair");
@@ -148,11 +171,13 @@ export function renderBoard(container, opts) {
       if (at) container._opts.onClick?.(...at);
     });
     container.addEventListener("mouseover", (event) => {
+      mark(event.target.closest(".cell"));
       aim(event.target.closest(".cell"));
       const at = target(event);
       if (at) container._opts.onHover?.(...at);
     });
     container.addEventListener("mouseleave", () => {
+      mark(null);
       aim(null);
       container._opts.onLeave?.();
     });

@@ -4,6 +4,9 @@
 
 - Cada jugador tiene un tablero cuadrado, de 10×10 por defecto. Filas y columnas se
   numeran desde 0.
+  La web las rotula como en los juegos de mesa, con letras para las columnas y números
+  para las filas: `C7` es la columna 2 y la fila 6, es decir, la casilla `(6, 2)` que
+  devuelve tu bot.
 - Los dos jugadores colocan la misma flota. La flota por defecto tiene barcos de
   longitud **5, 4, 3, 3, 2**. El tamaño del tablero y la flota se pueden configurar.
 - Los barcos son rectos, horizontales o verticales. Tienen que estar enteros dentro del

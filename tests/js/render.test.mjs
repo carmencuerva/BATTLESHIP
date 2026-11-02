@@ -37,7 +37,19 @@ test("renderBoard draws size² cells with their states", () => {
   assert.equal(count(box.innerHTML, 'class="flame"'), 1); // fire only where a ship is hit
   assert.equal(count(box.innerHTML, " clickable"), size * size - 3); // only unknown cells
   assert.match(box.innerHTML, /grid-template-columns:repeat\(4, var\(--cell\)\)/);
-  assert.doesNotMatch(box.innerHTML, /class="label"/); // no coordinates on the board
+  // Board-game labels, sized to the board: letters A-D on top, numbers 1-4 on the side.
+  const cols = [...box.innerHTML.matchAll(/<span data-c="\d+">([A-Z])<\/span>/g)].map((m) => m[1]);
+  const rows = [...box.innerHTML.matchAll(/<span data-r="\d+">(\d+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(cols, ["A", "B", "C", "D"]);
+  assert.deepEqual(rows, ["1", "2", "3", "4"]);
+});
+
+test("labels follow the board size", () => {
+  const box = fakeContainer();
+  renderBoard(box, { size: 12 });
+  assert.match(box.innerHTML, /<span data-c="11">L<\/span>/);
+  assert.match(box.innerHTML, /<span data-r="11">12<\/span>/);
+  assert.doesNotMatch(box.innerHTML, /data-c="12"/);
 });
 
 test("ships are drawn whole, sunk ones marked, the fresh sink animated", () => {
