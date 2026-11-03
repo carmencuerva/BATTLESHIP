@@ -10,6 +10,7 @@ import { esc, th } from "./html.js";
 import { getLang, setLang, t } from "./i18n.js";
 import { leaderboardHtml, stageName } from "./leaderboard.js";
 import { createParrot } from "./parrot.js";
+import { lineForEnd, lineForShot, lineForStart } from "./parrot-lines.js";
 import { miniShip } from "./ships.js";
 import { isMuted, setMuted, sfx } from "./sound.js";
 import { load, save } from "./store.js";
@@ -460,6 +461,7 @@ function startMatch() {
     pending: null, // touch: the cell picked by a first tap, fired by a second
     fresh: null, // the shot to animate on the next draw
     endShown: false,
+    started: false, // the parrot's opening line has been said
     hints: true,
     xray: mode === "bvb",
     timer: null,
@@ -806,12 +808,13 @@ function boardEl(side) {
   return app.querySelector(side === left ? "#board-left" : "#board-right");
 }
 
-// The parrot speaks plain text (it is set with textContent, never as HTML).
-function say(key, vars = {}, options = {}) {
-  layout?.parrot.say(t(key, vars), options);
+// The parrot speaks rarely (see parrot-lines.js); its words always appear in the bubble
+// too, and are also said out loud when sound is on. Set with textContent, never as HTML.
+function speakLine(text, mood) {
+  if (text) layout?.parrot.say(text, { mood, voice: text });
 }
 
-// How the parrot addresses a human: "deckhand Ana", "Captain Ana", or just the rank.
+// How the end screen addresses a human: "deckhand Ana", "Captain Ana", or just the rank.
 function title(side) {
   return side.rank === "captain" && side.form === "f" ? "captain_f" : side.rank;
 }
@@ -821,30 +824,10 @@ function addr(side) {
   return match.mode === "hvh" ? side.name : t(`title_${title(side)}`);
 }
 
-function sayTurn() {
-  const side = match.sides[match.attacker];
-  if (side.kind === "human") say("p_your_turn", { who: addr(side) }, { mood: "turn", voice: t("voice_turn") });
-  else if (match.mode === "hvb") say("p_opp_turn", { name: side.name }, { mood: "turn", voice: t("voice_opp_turn") });
-  else say("p_turn_of", { name: side.name }, { mood: "turn" });
-}
-
-// The parrot's line for a shot: it speaks to the human who fired, or warns the human who
-// was fired at, or (bot v bot) just calls it.
-function sayShot(attacker, defender, shot, result, promoted) {
-  const { outcome, length } = result;
-  const lines = [t("p_shot_at", { cell: coord(...shot) })];
-  if (outcome === "sunk") lines.push(t("p_sunk_sub", { length }));
-  if (promoted) lines.push(t("p_promoted", { name: attacker.typed || attacker.name, title: t(`title_${title(attacker)}`) }));
-  const options = { mood: outcome, sub: lines.join(" · ") };
-  // The parrot also says a short line out loud (see sound.speak).
-  if (attacker.kind === "human") {
-    const voice = outcome === "hit" ? `voice_hit_${title(attacker)}` : `voice_${outcome}${outcome === "sunk" ? "_you" : ""}`;
-    say(`p_${outcome}_you`, { who: addr(attacker) }, { ...options, voice: t(voice) });
-  } else if (defender.kind === "human") {
-    say(`p_${outcome}_bot`, { name: attacker.name, who: addr(defender) }, { ...options, voice: t(`voice_${outcome}_bot`) });
-  } else {
-    say({ miss: "p_miss", hit: "p_hit", sunk: "p_sunk" }[outcome], {}, { ...options, voice: t(`voice_${outcome}`) });
-  }
+// Victory or defeat, for the player the screen belongs to: only a human playing a bot can
+// lose; otherwise the screen celebrates the winner.
+function endKind(m) {
+  return m.mode === "hvb" && m.sides[m.over.winner].kind !== "human" ? "defeat" : "victory";
 }
 
 function leaveGame() {
@@ -865,8 +848,9 @@ function beginBattle() {
 function forfeit(i, reason) {
   match.over = { winner: 1 - i, forfeit: i, reason };
   stopMatch();
+  match.log.push({ key: "forfeit", vars: { name: match.sides[i].name, reason } });
   show(gameScreen);
-  say("p_forfeit", { name: match.sides[i].name }, { mood: "info", sub: reason });
+  speakLine(lineForEnd(endKind(match), getLang()), endKind(match) === "victory" ? "sunk" : "miss");
   finishGame(1400);
 }
 
@@ -929,16 +913,22 @@ async function fire(shot) {
     }
   }
   const shooter = m.sides[a];
-  const promoted = outcome === "sunk" && shooter.kind === "human" && shooter.rank === "deckhand";
-  if (promoted) shooter.rank = "captain";
-  sayShot(shooter, m.sides[d], shot, res.result, promoted);
+  if (outcome === "sunk" && shooter.kind === "human") shooter.rank = "captain"; // promoted
+  // Silent on water and plain hits. When a person sinks a ship: how many enemy ships are
+  // still afloat, as the engine counts them (the last sink gives way to the end-of-game
+  // line). A bot's sinks are not counted aloud, and in hot-seat games only the shooter's
+  // own shot is spoken of, never anything about the other player's board.
+  if (shooter.kind === "human") {
+    const afloat = arena.call("status", res.board).view.remaining.length;
+    speakLine(lineForShot(outcome, afloat, getLang()), "sunk");
+  }
+  if (res.terminal) speakLine(lineForEnd(endKind(m), getLang()), endKind(m) === "victory" ? "sunk" : "miss");
 
   if (res.terminal) {
     stopMatch();
     finishGame(1900);
     return;
   }
-  if (changed && m.mode !== "hvh") sayTurn();
   continueTurn(changed, outcome);
 }
 
@@ -1004,8 +994,7 @@ function showEnd(m) {
   const w = m.over.winner;
   const winner = m.sides[w];
   const loser = m.sides[1 - w];
-  // Only a human playing a bot can lose; otherwise the screen celebrates the winner.
-  const kind = m.mode === "hvb" && winner.kind !== "human" ? "defeat" : "victory";
+  const kind = endKind(m);
   let sub;
   if (m.over.forfeit != null) sub = t("end_forfeit", { name: loser.name });
   else if (kind === "defeat") sub = t("end_defeat_sub", { name: winner.name, shots: m.shots[w], who: addr(loser) });
@@ -1019,7 +1008,6 @@ function showEnd(m) {
       again: t("play_again"),
       menu: t("back_menu"),
       boards: t("end_boards"),
-      voice: t(kind === "victory" ? "voice_victory" : "voice_defeat"),
     },
     {
       onAgain: startMatch,
@@ -1220,7 +1208,12 @@ function gameScreen() {
     show(menuScreen);
   });
 
-  if (built && !over && match.attacker != null && !match.locked) sayTurn();
+  // One short line when the battle starts (in hot-seat games, once the first player has
+  // the device); turns are shown by the hat, not announced.
+  if (built && !over && match.attacker != null && !match.locked && !match.started) {
+    match.started = true;
+    speakLine(lineForStart(getLang()), "info");
+  }
 }
 
 // --- boot -------------------------------------------------------------------------------

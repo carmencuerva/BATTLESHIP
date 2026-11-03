@@ -2,8 +2,7 @@
 // storm). Shown once the game has a result; they never touch the game state.
 
 import { esc } from "./html.js";
-import { getLang } from "./i18n.js";
-import { sfx, speak } from "./sound.js";
+import { sfx } from "./sound.js";
 
 const COIN = `
 <svg viewBox="0 0 60 60" aria-hidden="true">
@@ -127,7 +126,7 @@ export function closeEndScreen() {
   setTimeout(() => overlay.remove(), 450);
 }
 
-// kind: "victory" | "defeat". labels: {title, sub, again, menu, boards, voice?}.
+// kind: "victory" | "defeat". labels: {title, sub, again, menu, boards}.
 export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   closeEndScreen();
   const overlay = document.createElement("div");
@@ -167,7 +166,6 @@ export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   const stops = [];
   if (victory) sfx.victory();
   else sfx.defeat();
-  const voice = setTimeout(() => speak(labels.voice, getLang()), 700);
   if (!victory) {
     stops.push(startRain(overlay.querySelector(".rain")));
     stops.push(startLightning(overlay));
@@ -177,7 +175,6 @@ export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   };
   addEventListener("keydown", onKey);
   stops.push(() => removeEventListener("keydown", onKey));
-  stops.push(() => clearTimeout(voice));
   active = { overlay, stops };
 
   overlay.querySelector('[data-act="again"]').addEventListener("click", () => {

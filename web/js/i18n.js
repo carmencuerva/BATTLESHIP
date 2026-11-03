@@ -25,14 +25,6 @@ export const STRINGS = {
     title_captain_named: "Captain {name}",
     title_captain_f: "captain",
     title_captain_f_named: "Captain {name}",
-    p_miss_you: "Water, water, {who}!",
-    p_hit_you: "Hit, {who}!",
-    p_sunk_you: "Sunk! Pieces of eight, {who}!",
-    p_miss_bot: "Water! {name} missed, {who}",
-    p_hit_bot: "{name} hit you, {who}!",
-    p_sunk_bot: "{name} sank one of your ships, {who}!",
-    p_promoted: "{name} is promoted to {title}!",
-    p_shot_at: "Shot at {cell}",
     too_wide: "No chart has more than {max} columns (A to Z): pick a smaller sea.",
     orders_title: "Boatswain's orders",
     order_drag: "Drag a ship from the hold onto the sea. Or pick it and tap a square.",
@@ -51,20 +43,6 @@ export const STRINGS = {
     why_no_room: "Try as I might, that fleet won't fit without ships touching.",
     why_other: "The code doesn't allow that: {reason}",
     tap_again: "tap again to fire",
-    voice_turn: "Your turn!",
-    voice_opp_turn: "Look out!",
-    voice_miss: "Water, water!",
-    voice_miss_bot: "They missed, ha!",
-    voice_hit: "Hit!",
-    voice_hit_deckhand: "Hit, deckhand!",
-    voice_hit_captain: "Hit, captain!",
-    voice_hit_captain_f: "Hit, captain!",
-    voice_hit_bot: "Ouch, we're hit!",
-    voice_sunk: "Sunk!",
-    voice_sunk_you: "Sunk! Pieces of eight!",
-    voice_sunk_bot: "They sank one of ours!",
-    voice_victory: "Pieces of eight! Pieces of eight!",
-    voice_defeat: "Arr! Down we go!",
     menu_title: "Set sail!",
     mode: "Kind of voyage",
     mode_hvb: "You against a pirate captain",
@@ -119,14 +97,6 @@ export const STRINGS = {
       "The rules and every bot are written once, in Python. That same code runs the " +
       "tournament in CI and runs here in your browser thanks to Pyodide. Bots only ever " +
       "see what an attacker may know: the shots so far and which ship lengths are still afloat.",
-    p_your_turn: "Your turn, {who}!",
-    p_opp_turn: "Look out! {name} is firing",
-    p_turn_of: "{name}'S TURN!",
-    p_hit: "HIT!",
-    p_miss: "WATER!",
-    p_sunk: "HIT AND SUNK!",
-    p_sunk_sub: "A {length}-cell ship goes down",
-    p_forfeit: "{name} ABANDONS SHIP!",
     victory: "VICTORY",
     defeat: "DEFEAT",
     end_victory_sub: "Enemy fleet sunk in {shots} shots. The treasure is yours, {who}!",
@@ -215,14 +185,6 @@ export const STRINGS = {
     title_captain_named: "capitán {name}",
     title_captain_f: "capitana",
     title_captain_f_named: "capitana {name}",
-    p_miss_you: "¡Agua, agua, {who}!",
-    p_hit_you: "¡Tocado, {who}!",
-    p_sunk_you: "¡Hundido! ¡Pieza de ocho, {who}!",
-    p_miss_bot: "¡Agua! {name} ha fallado, {who}",
-    p_hit_bot: "¡{name} te ha tocado, {who}!",
-    p_sunk_bot: "¡{name} te ha hundido un barco, {who}!",
-    p_promoted: "¡{name} asciende a {title}!",
-    p_shot_at: "Disparo en {cell}",
     too_wide: "Ninguna carta náutica tiene más de {max} columnas (de la A a la Z): elige un mar más pequeño.",
     orders_title: "Órdenes del contramaestre",
     order_drag: "Arrastra un barco de la bodega hasta el mar. También puedes elegirlo y tocar una casilla.",
@@ -241,20 +203,6 @@ export const STRINGS = {
     why_no_room: "Por más que lo intento, esa flota no cabe sin que se rocen los barcos.",
     why_other: "Eso no lo permite el código: {reason}",
     tap_again: "toca otra vez para disparar",
-    voice_turn: "¡Te toca!",
-    voice_opp_turn: "¡Cuidado!",
-    voice_miss: "¡Agua, agua!",
-    voice_miss_bot: "¡Han fallado, ja!",
-    voice_hit: "¡Tocado!",
-    voice_hit_deckhand: "¡Tocado, grumete!",
-    voice_hit_captain: "¡Tocado, capitán!",
-    voice_hit_captain_f: "¡Tocado, capitana!",
-    voice_hit_bot: "¡Ay, nos han tocado!",
-    voice_sunk: "¡Hundido!",
-    voice_sunk_you: "¡Hundido! ¡Pieza de ocho!",
-    voice_sunk_bot: "¡Nos han hundido un barco!",
-    voice_victory: "¡Pieza de ocho! ¡Pieza de ocho!",
-    voice_defeat: "¡Arr! ¡A pique!",
     menu_title: "¡Zarpamos!",
     mode: "Tipo de travesía",
     mode_hvb: "Tú contra un capitán pirata",
@@ -310,14 +258,6 @@ export const STRINGS = {
       "juega el torneo en la CI y se ejecuta aquí, en tu navegador, gracias a Pyodide. Los " +
       "bots solo ven lo que un atacante puede saber: los disparos hechos y qué longitudes " +
       "siguen a flote.",
-    p_your_turn: "¡Te toca, {who}!",
-    p_opp_turn: "¡Cuidado! Dispara {name}",
-    p_turn_of: "¡TURNO DE {name}!",
-    p_hit: "¡TOCADO!",
-    p_miss: "¡AGUA!",
-    p_sunk: "¡TOCADO Y HUNDIDO!",
-    p_sunk_sub: "Se hunde un barco de {length}",
-    p_forfeit: "¡{name} ABANDONA EL BARCO!",
     victory: "VICTORIA",
     defeat: "DERROTA",
     end_victory_sub: "Flota enemiga hundida en {shots} disparos. ¡El tesoro es tuyo, {who}!",
@@ -413,4 +353,20 @@ export function setLang(value) {
 export function t(key, vars = {}) {
   const text = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
   return text.replace(/\{(\w+)\}/g, (_, name) => (name in vars ? String(vars[name]) : `{${name}}`));
+}
+
+// The language's plural category for `n` ("one", "other", …), e.g. to pick "1 ship" or
+// "3 ships". Intl.PluralRules knows each language's rules; without it, 1 is "one".
+export function pluralCategory(n, language = lang) {
+  try {
+    return new Intl.PluralRules(language).select(n);
+  } catch {
+    return n === 1 ? "one" : "other";
+  }
+}
+
+// t() for a counted phrase: uses `${key}_one` or `${key}_other` and fills {n}.
+export function tn(key, n, vars = {}) {
+  const form = pluralCategory(n) === "one" ? "one" : "other";
+  return t(`${key}_${form}`, { ...vars, n });
 }

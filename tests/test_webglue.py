@@ -112,6 +112,17 @@ def test_shoot_reports_next_attacker_and_errors():
     assert "error" in call("shoot", hit["board"], [10, 0], 1)
 
 
+def test_status_counts_the_ships_still_afloat():
+    """The parrot's "N ships left" comes from here: one fewer after each sink, never on hits."""
+    board = call("new_board", 10, list(DEFAULT_FLEET), STACKED)
+    assert call("status", board)["view"]["remaining"] == [5, 4, 3, 3, 2]
+    board = call("shoot", board, [8, 0], 0)["board"]  # hit the 2-ship
+    assert len(call("status", board)["view"]["remaining"]) == 5
+    out = call("shoot", board, [8, 1], 0)  # and sink it
+    assert out["result"]["outcome"] == "sunk"
+    assert call("status", out["board"])["view"]["remaining"] == [5, 4, 3, 3]
+
+
 def test_status_hints_mark_certain_water():
     board = call("new_board", 10, list(DEFAULT_FLEET), STACKED)
     for shot in ([8, 0], [8, 1], [0, 2]):  # sink the 2-ship, hit the 5-ship
