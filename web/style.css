@@ -1760,7 +1760,13 @@ input[type="radio"] {
 .pirate-stage {
   position: relative;
   height: min(62vh, 520px);
-  aspect-ratio: 620 / 833;
+  aspect-ratio: 640 / 712; /* the victory picture's own proportions */
+}
+
+/* The defeat picture is squarer: its stage follows it, so it is never squashed or cut. */
+.pirate-stage.cry {
+  aspect-ratio: 640 / 646;
+  height: min(54vh, 460px); /* wider than the victory picture: a little lower, so the title fits beside it */
 }
 
 .pirate-stage img {
@@ -2181,23 +2187,24 @@ input[type="radio"] {
   animation: tear 1.25s ease-in infinite;
 }
 
+/* under the closed eyes of the defeat picture (pirate-sad.webp) */
 .tear.t1 {
-  left: 31%;
-  top: 41%;
+  left: 53%;
+  top: 39%;
 }
 .tear.t2 {
-  left: 33%;
-  top: 42%;
+  left: 55%;
+  top: 40%;
   animation-delay: 0.62s;
 }
 .tear.t3 {
-  left: 54%;
-  top: 40%;
+  left: 63%;
+  top: 39%;
   animation-delay: 0.3s;
 }
 .tear.t4 {
-  left: 56%;
-  top: 41%;
+  left: 65%;
+  top: 40%;
   animation-delay: 0.95s;
 }
 
@@ -2348,7 +2355,8 @@ progress {
     --cell: min(36px, calc((100vw - 114px) / var(--size, 10)));
   }
 
-  .pirate-stage {
+  .pirate-stage,
+  .pirate-stage.cry {
     height: min(40vh, 360px);
   }
 }
