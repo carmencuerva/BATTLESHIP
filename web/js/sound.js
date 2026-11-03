@@ -8,20 +8,47 @@ import { load, save } from "./store.js";
 
 // --- tune the parrot here -------------------------------------------------------------
 
-// The spoken words (the browser's speechSynthesis, after the squawk).
+// The spoken words (the browser's speechSynthesis, after the squawk): a cartoon parrot's
+// voice, rather high and quick, always clear enough to understand.
 export const PARROT_VOICE = {
-  pitch: 0.6, // 0..2, 1 = the voice's normal pitch: low and gravelly, like a macaw
-  rate: 0.9, // 1 = normal speed
+  pitch: 1.45, // 0..2, 1 = the voice's normal pitch
+  rate: 1.05, // 1 = normal speed
   volume: 1, // 0..1
   afterSquawk: 0.42, // seconds between the start of the squawk and the words
 };
 
-// The squawk before every line: a hoarse, choppy "RAAAK-ak". Each chirp glides down.
-export const SQUAWK = {
-  chirps: [
-    { from: 780, to: 300, at: 0, dur: 0.24 },
-    { from: 620, to: 250, at: 0.28, dur: 0.15 },
+// How it sounds in each situation: pitch and speed relative to PARROT_VOICE, `lift` raises
+// the opening exclamation ("¡Tocado y hundido!") above the rest, and `squawk` picks its cry.
+export const PARROT_MOODS = {
+  turn: { pitch: 1.05, rate: 1.12, lift: 0.08, squawk: "bright" }, // energetic
+  sunk: { pitch: 1.12, rate: 1.08, lift: 0.18, squawk: "excited" }, // thrilled
+  lost: { pitch: 0.78, rate: 0.88, lift: 0.05, squawk: "worried" }, // worried, let down
+  victory: { pitch: 1.15, rate: 1.04, lift: 0.15, squawk: "excited" }, // overjoyed
+  defeat: { pitch: 0.68, rate: 0.8, lift: 0, squawk: "sad" }, // sad
+  info: { pitch: 1, rate: 1, lift: 0.08, squawk: "bright" },
+};
+
+// The cries before a line: hoarse, choppy "RAAAK-ak"s. Each chirp glides from `from` to
+// `to` Hz; the other settings below are shared by all of them.
+export const SQUAWKS = {
+  bright: [
+    { from: 820, to: 360, at: 0, dur: 0.2 },
+    { from: 700, to: 300, at: 0.24, dur: 0.13 },
   ],
+  excited: [
+    { from: 900, to: 420, at: 0, dur: 0.16 },
+    { from: 980, to: 460, at: 0.19, dur: 0.14 },
+    { from: 1050, to: 380, at: 0.36, dur: 0.2 },
+  ],
+  worried: [{ from: 620, to: 300, at: 0, dur: 0.34 }],
+  sad: [
+    { from: 520, to: 260, at: 0, dur: 0.3 },
+    { from: 420, to: 200, at: 0.36, dur: 0.4 },
+  ],
+};
+
+export const SQUAWK = {
+  chirps: SQUAWKS.bright,
   detune: 9, // Hz between the two sawtooths that rasp against each other
   vibratoHz: 30, // pitch wobble: speed…
   vibratoDepth: 40, // …and width in Hz
@@ -113,14 +140,41 @@ export function setMuted(value) {
   changed();
 }
 
+// The most natural voice the device has for `lang`: the "natural"/"neural" voices of
+// modern browsers sound far less robotic than the old built-in ones.
 function pickVoice(synth, lang) {
   const voices = (synth.getVoices?.() ?? []).filter((v) => v.lang?.toLowerCase().startsWith(lang));
-  return voices.find((v) => v.localService) ?? voices[0] ?? null;
+  const natural = /natural|neural|online|enhanced|premium|google/i;
+  return voices.find((v) => natural.test(v.name)) ?? voices.find((v) => v.localService) ?? voices[0] ?? null;
 }
 
-// The words, in a low voice in `lang` ("es" or "en"). False if there is no speech engine
-// or no voice for the language (then the squawk and the bubble are all there is).
-function sayWords(text, lang) {
+// "¡Tocado y hundido! ¡Te quedan tres!" -> ["¡Tocado y hundido!", "¡Te quedan tres!"]
+export function phrases(text) {
+  return (String(text).match(/[^.!?…]+[.!?…]+["»”]?|[^.!?…]+$/g) ?? [])
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+// Pitch and speed for each phrase of a line in `mood`: the first one lifted, the rest
+// varying a little so the line never sounds read out flat.
+export function deliveryOf(text, mood = "info") {
+  const m = PARROT_MOODS[mood] ?? PARROT_MOODS.info;
+  return phrases(text).map((part, i) => {
+    const exclaimed = /[!¡]/.test(part);
+    const lift = i === 0 ? m.lift : exclaimed ? m.lift / 2 : 0;
+    const wobble = i === 0 ? 0 : (i % 2 ? -0.04 : 0.03);
+    return {
+      text: part,
+      pitch: Math.min(2, Math.max(0.1, PARROT_VOICE.pitch * m.pitch + lift + wobble)),
+      rate: Math.min(2, Math.max(0.5, PARROT_VOICE.rate * m.rate * (exclaimed ? 1.04 : 1))),
+    };
+  });
+}
+
+// The words in `lang` ("es" or "en"), phrase by phrase with the mood's delivery. False if
+// there is no speech engine or no voice for the language (then the squawk and the bubble
+// are all there is).
+function sayWords(text, lang, mood) {
   const synth = globalThis.speechSynthesis;
   const Utterance = globalThis.SpeechSynthesisUtterance;
   if (!synth || !Utterance) return false;
@@ -128,33 +182,39 @@ function sayWords(text, lang) {
     const voice = pickVoice(synth, lang);
     if (!voice) return false;
     synth.cancel(); // a new line replaces the old one instead of queueing behind it
-    const line = new Utterance(text);
-    line.voice = voice;
-    line.lang = voice.lang;
-    line.pitch = PARROT_VOICE.pitch;
-    line.rate = PARROT_VOICE.rate;
-    line.volume = PARROT_VOICE.volume * levels.voice;
-    line.onend = line.onerror = () => parrotIs("quiet");
-    synth.speak(line);
-    return true;
+    const parts = deliveryOf(text, mood);
+    parts.forEach((part, i) => {
+      const line = new Utterance(part.text);
+      line.voice = voice;
+      line.lang = voice.lang;
+      line.pitch = part.pitch;
+      line.rate = part.rate;
+      line.volume = PARROT_VOICE.volume * levels.voice;
+      if (i === parts.length - 1) line.onend = () => parrotIs("quiet");
+      line.onerror = () => parrotIs("quiet");
+      synth.speak(line);
+    });
+    return parts.length > 0;
   } catch {
     return false; // a broken speech engine must never stop the game
   }
 }
 
-// The parrot speaks: a squawk, then `text` in its low voice when the device has one for
-// `lang`. Nothing at all while sound is off or before the player has touched the page.
+// The parrot speaks: a squawk, then `text` in its voice when the device has one for
+// `lang`, as `mood` asks (see PARROT_MOODS). Nothing at all while sound is off or before
+// the player has touched the page. A new line always cuts off the one before.
 // Returns {squawk, words}: whether each could be played or scheduled.
-export function parrotSay(text, lang) {
+export function parrotSay(text, lang, mood = "info") {
   const result = { squawk: false, words: false };
   if (muted || !unlocked || !text) return result;
   parrotIs("talking"); // the music steps aside
-  result.squawk = squawk();
+  globalThis.speechSynthesis?.cancel?.();
+  result.squawk = squawk((PARROT_MOODS[mood] ?? PARROT_MOODS.info).squawk);
   const synth = globalThis.speechSynthesis;
   result.words = Boolean(synth && globalThis.SpeechSynthesisUtterance && pickVoice(synth, lang));
   clearTimeout(pendingWords);
   if (result.words) {
-    pendingWords = setTimeout(() => sayWords(text, lang) || parrotIs("quiet"), PARROT_VOICE.afterSquawk * 1000);
+    pendingWords = setTimeout(() => sayWords(text, lang, mood) || parrotIs("quiet"), PARROT_VOICE.afterSquawk * 1000);
   } else {
     pendingWords = setTimeout(() => parrotIs("quiet"), 700); // just the squawk
   }
@@ -196,13 +256,13 @@ function envelope(ac, start, dur, peak, out = master) {
   return gain;
 }
 
-// One squawk, built from SQUAWK (see the top of this file). Returns false if silent.
-function squawk() {
+// One squawk of the given kind (see SQUAWKS at the top of this file). False if silent.
+function squawk(kind = "bright") {
   try {
     const ac = audio();
     if (!ac) return false;
     const s = SQUAWK;
-    for (const chirp of s.chirps) {
+    for (const chirp of SQUAWKS[kind] ?? s.chirps) {
       const start = ac.currentTime + chirp.at;
       const stop = start + chirp.dur + 0.05;
       const band = ac.createBiquadFilter();

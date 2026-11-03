@@ -17,13 +17,15 @@ the same code plays the official tournament in CI and runs in your browser via
   fleet), the dividers (the size of the sea), the compass (the wind) and the logbook (the
   pirate code). Everything in it is drawn by the page's own code (`web/js/cabin-art.js`).
 - **The parrot** sits still on its perch between the two boards, so it never covers them.
-  It speaks rarely: when the battle starts, when you sink a ship (telling you
-  how many enemy ships are left) and when the game ends. Its words always appear in its
+  It speaks only at a few moments: when your turn starts, when you sink an enemy ship
+  (telling you how many are left), when the enemy sinks one of yours (saying it was from
+  your fleet) and when the game ends. A new line never plays over another or queues up. Its words always appear in its
   speech bubble. Its lines live in `web/js/parrot-lines.js` if you want other words.
 - **Sound**: off until you turn it on with 🔊 (the page remembers your choice). The parrot
-  then squawks (synthesised by the page) and says its line in a low voice, using your
-  device's voices; with no voice for the language it only squawks. Its pitch, speed and
-  squawk are constants at the top of `web/js/sound.js`.
+  then squawks (synthesised by the page) and says its line in a lively, rather high voice
+  that changes with the moment (thrilled, worried, sad…), using your device's most natural
+  voice; with no voice for the language it only squawks. Its voice, its moods and its
+  squawks are constants at the top of `web/js/sound.js`.
 - **Music**: an original sea shanty in 6/8, composed for the game and played live by the
   page (`web/js/music.js`, no recordings). It starts after your first click with sound on,
   carries on across screens, quietens while the parrot speaks and pauses in a hidden tab.

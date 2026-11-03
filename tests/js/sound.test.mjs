@@ -41,7 +41,9 @@ globalThis.SpeechSynthesisUtterance = class {
 };
 globalThis.speechSynthesis = { getVoices: () => voices, cancel() {}, speak: (u) => spoken.push(u) };
 
-const { PARROT_VOICE, SQUAWK, isMuted, parrotSay, setMuted, sfx, unlock } = await import("../../web/js/sound.js");
+const { PARROT_MOODS, PARROT_VOICE, SQUAWK, SQUAWKS, deliveryOf, isMuted, parrotSay, phrases, setMuted, sfx, unlock } = await import(
+  "../../web/js/sound.js"
+);
 const wait = (s) => new Promise((resolve) => setTimeout(resolve, s * 1000 + 30));
 
 test("silent by default, and nothing sounds before the first gesture", () => {
@@ -63,22 +65,44 @@ test("a squawk first: hoarse sawtooths gliding down", () => {
   for (const saw of saws) assert.ok(saw.frequency.ramps[0] < saw.frequency.value, "the pitch falls");
 });
 
-test("then the words, low and slow, in the page's language", async () => {
+test("then the words, phrase by phrase, lively, in the page's language", async () => {
   spoken.length = 0;
   voices = [
-    { lang: "en-GB", localService: true },
-    { lang: "es-ES", localService: false },
-    { lang: "es-MX", localService: true },
+    { lang: "en-GB", localService: true, name: "English" },
+    { lang: "es-ES", localService: false, name: "Spanish (old)" },
+    { lang: "es-MX", localService: true, name: "Spanish local" },
   ];
-  const result = parrotSay("¡Hundido! Queda 1 barco por hundir.", "es");
+  const result = parrotSay("¡Tocado y hundido! ¡Te quedan tres barcos por hundir!", "es", "sunk");
   assert.equal(result.words, true);
   assert.equal(spoken.length, 0, "the words wait for the squawk");
   await wait(PARROT_VOICE.afterSquawk);
-  const line = spoken.at(-1);
-  assert.equal(line.text, "¡Hundido! Queda 1 barco por hundir.");
-  assert.equal(line.lang, "es-MX"); // a local Spanish voice is preferred
-  assert.ok(line.pitch < 1, "a low, macaw-like voice");
-  assert.equal(line.rate, PARROT_VOICE.rate);
+  assert.deepEqual(spoken.map((u) => u.text), ["¡Tocado y hundido!", "¡Te quedan tres barcos por hundir!"]);
+  assert.equal(spoken[0].lang, "es-MX"); // a local Spanish voice beats an old remote one
+  assert.ok(spoken[0].pitch > 1, "a rather high, cartoon-parrot voice");
+  assert.ok(spoken[0].pitch > spoken[1].pitch, "the exclamation is lifted above the rest");
+});
+
+test("a natural (neural) voice is preferred when the device has one", async () => {
+  spoken.length = 0;
+  voices = [
+    { lang: "es-ES", localService: true, name: "Microsoft Helena - Spanish" },
+    { lang: "es-ES", localService: false, name: "Microsoft Elvira Online (Natural) - Spanish" },
+  ];
+  parrotSay("¡Tu turno, capitán!", "es", "turn");
+  await wait(PARROT_VOICE.afterSquawk);
+  assert.match(spoken[0].voice.name, /Natural/);
+});
+
+test("each mood has its own delivery", () => {
+  const happy = deliveryOf("¡Victoria!", "victory")[0];
+  const sad = deliveryOf("Nos vamos a pique…", "defeat")[0];
+  const worried = deliveryOf("¡Han hundido uno de tus barcos!", "lost")[0];
+  const turn = deliveryOf("¡Tu turno!", "turn")[0];
+  assert.ok(happy.pitch > worried.pitch && worried.pitch > sad.pitch);
+  assert.ok(sad.rate < turn.rate, "sad is slow, your turn is quick");
+  for (const mood of Object.keys(PARROT_MOODS)) assert.ok(SQUAWKS[PARROT_MOODS[mood].squawk], mood);
+  assert.deepEqual(phrases("¡Otro al fondo! ¡Solo queda uno, capitán!"), ["¡Otro al fondo!", "¡Solo queda uno, capitán!"]);
+  assert.deepEqual(phrases("Arr! Down we go…"), ["Arr!", "Down we go…"]);
 });
 
 test("no voice for the language: only the squawk (the bubble shows the words)", async () => {

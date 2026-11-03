@@ -17,13 +17,15 @@ navegador gracias a [Pyodide](https://pyodide.org).
   flota), el compás (el tamaño del mar), la brújula (el viento) y el cuaderno de bitácora
   (el código del pirata). Todo lo dibuja el propio código de la web (`web/js/cabin-art.js`).
 - **El loro** está quieto en su percha entre los dos tableros, así que nunca los tapa.
-  Habla poco: al empezar la batalla, cuando hundes un barco (te dice cuántos
-  barcos enemigos quedan) y al terminar. Lo que dice sale siempre en su bocadillo. Sus
+  Habla solo en momentos concretos: cuando empieza tu turno, cuando hundes un barco enemigo
+  (te dice cuántos quedan), cuando el enemigo hunde uno de los tuyos (dejando claro que es
+  de tu flota) y al terminar. Una frase nueva nunca suena encima de otra ni se acumula. Lo que dice sale siempre en su bocadillo. Sus
   frases están en `web/js/parrot-lines.js` por si queréis otras palabras.
 - **Sonido**: apagado hasta que lo enciendes con 🔊 (la web recuerda tu elección). Entonces
-  el loro grazna (un graznido sintetizado por la propia web) y dice su frase con voz grave,
-  usando las voces de tu dispositivo; si no hay voz para el idioma, solo grazna. Su tono,
-  su velocidad y el graznido son constantes al principio de `web/js/sound.js`.
+  el loro grazna (un graznido sintetizado por la propia web) y dice su frase con una voz
+  viva y algo aguda que cambia según el momento (emoción, preocupación, tristeza…), usando
+  la voz más natural de tu dispositivo; si no hay voz para el idioma, solo grazna. Su voz,
+  sus estados de ánimo y sus graznidos son constantes al principio de `web/js/sound.js`.
 - **Música**: una canción de marineros propia en 6/8, compuesta para el juego y tocada en
   directo por la web (`web/js/music.js`, sin grabaciones). Empieza tras tu primer clic con
   el sonido encendido, sigue al cambiar de pantalla, baja mientras habla el loro y se pausa

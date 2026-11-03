@@ -1196,10 +1196,24 @@ input[type="radio"] {
   font-size: 22px;
 }
 
+/* Your turn: short and lively. */
+.bubble.mood-turn {
+  --bubble-bg: #fff6d6;
+  color: #7a4a00;
+  font-size: 24px;
+}
+
+/* One of your ships went down: worried. */
+.bubble.mood-lost {
+  --bubble-bg: #dde7ef;
+  color: #24384a;
+  font-size: 21px;
+}
+
 .bubble.mood-sunk {
   --bubble-bg: #ffe14d;
   color: #b30000;
-  font-size: 29px;
+  font-size: 23px;
   border-width: 5px;
   box-shadow: 0 0 0 4px #fff, 7px 9px 0 rgba(0, 0, 0, 0.4), 0 0 26px rgba(255, 200, 40, 0.8);
 }

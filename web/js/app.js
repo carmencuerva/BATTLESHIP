@@ -30,7 +30,7 @@ import { esc, th } from "./html.js";
 import { getLang, setLang, t, tn } from "./i18n.js";
 import { leaderboardHtml, stageName } from "./leaderboard.js";
 import { createParrot } from "./parrot.js";
-import { lineForEnd, lineForShot, lineForStart } from "./parrot-lines.js";
+import { lineForEnd, lineForLoss, lineForShot, lineForTurn } from "./parrot-lines.js";
 import { miniShip } from "./ships.js";
 import { updateMusic } from "./music.js";
 import { getLevel, isMuted, setLevel, setMuted, sfx } from "./sound.js";
@@ -888,7 +888,9 @@ function startMatch() {
     pending: null, // touch: the cell picked by a first tap, fired by a second
     fresh: null, // the shot to animate on the next draw
     endShown: false,
-    started: false, // the parrot's opening line has been said
+    turn: 0, // bumped each time the cannon changes hands
+    called: -1, // the last turn the parrot announced
+    hushTurn: false, // a shot is being announced: no "your turn" until it has been said
     hints: true,
     xray: mode === "bvb",
     timer: null,
@@ -1240,8 +1242,27 @@ function boardEl(side) {
 
 // The parrot speaks rarely (see parrot-lines.js); its words always appear in the bubble
 // too, and are also said out loud when sound is on. Set with textContent, never as HTML.
+// `mood` (turn, sunk, lost, victory, defeat) sets the tone of its voice and bubble.
 function speakLine(text, mood) {
-  if (text) layout?.parrot.say(text, { mood, voice: text });
+  if (!text) return false;
+  layout?.parrot.say(text, { mood, voice: text });
+  return true;
+}
+
+// How the parrot calls a player: by name in hot-seat games, otherwise by rank.
+function who(side) {
+  return match.mode === "hvh" ? side.name : t(`title_${title(side)}`);
+}
+
+// "Your turn!" once each time the cannon passes to a person who is at the screen.
+let turnCalls = 0; // to vary the wording
+function announceTurn() {
+  const m = match;
+  if (!m || m.over || m.locked || m.busy || m.hushTurn || m.called === m.turn) return;
+  const side = m.sides[m.attacker];
+  if (side?.kind !== "human" || m.attacker !== m.viewer) return;
+  m.called = m.turn;
+  speakLine(lineForTurn(getLang(), { who: who(side), k: turnCalls++ }), "turn");
 }
 
 // How the end screen addresses a human: "deckhand Ana", "Captain Ana", or just the rank.
@@ -1268,6 +1289,7 @@ function leaveGame() {
 
 function beginBattle() {
   match.attacker = Math.random() < 0.5 ? 0 : 1;
+  match.turn = 1;
   match.viewer = match.mode === "hvb" ? 0 : match.attacker;
   match.log.push({ key: "first_shooter", vars: { name: match.sides[match.attacker].name } });
   if (match.mode === "hvh") show(() => passScreen(match.attacker, () => show(gameScreen)));
@@ -1281,7 +1303,7 @@ function forfeit(i, reason) {
   stopMatch();
   match.log.push({ key: "forfeit", vars: { name: match.sides[i].name, reason } });
   show(gameScreen);
-  speakLine(lineForEnd(endKind(match), getLang()), endKind(match) === "victory" ? "sunk" : "miss");
+  speakLine(lineForEnd(endKind(match), getLang()), endKind(match));
   finishGame(1400);
 }
 
@@ -1319,13 +1341,16 @@ async function fire(shot) {
     m.over = { winner: a };
   } else {
     m.attacker = res.next;
+    if (changed) m.turn += 1;
     if (m.mode === "hvh" && changed) m.locked = true; // the device changes hands first
   }
   m.busy = false;
 
   // 3. Draw the new boards once, with this shot's effect, then announce it.
   m.fresh = { side: d, cell: shot, outcome };
+  m.hushTurn = true;
   gameScreen();
+  m.hushTurn = false;
   m.fresh = null;
   const landed = boardEl(d);
   if (landed) {
@@ -1346,14 +1371,21 @@ async function fire(shot) {
   const shooter = m.sides[a];
   if (outcome === "sunk" && shooter.kind === "human") shooter.rank = "captain"; // promoted
   // Silent on water and plain hits. When a person sinks a ship: how many enemy ships are
-  // still afloat, as the engine counts them (the last sink gives way to the end-of-game
-  // line). A bot's sinks are not counted aloud, and in hot-seat games only the shooter's
-  // own shot is spoken of, never anything about the other player's board.
-  if (shooter.kind === "human") {
-    const afloat = arena.call("status", res.board).view.remaining.length;
-    speakLine(lineForShot(outcome, afloat, getLang()), "sunk");
+  // still afloat, as the engine counts them. When a bot sinks a person's ship: that it was
+  // one of theirs, and how many they have left. The last sink gives way to the end-of-game
+  // line. In hot-seat games only the shooter's own shot is spoken of, never anything about
+  // the other player's board.
+  const afloat = arena.call("status", res.board).view.remaining.length;
+  const lang = getLang();
+  let said = false;
+  if (outcome === "sunk" && shooter.kind === "human") {
+    said = speakLine(lineForShot(outcome, afloat, lang, { who: who(shooter), k: m.shots[a] }), "sunk");
+  } else if (outcome === "sunk" && m.mode === "hvb" && m.sides[d].kind === "human") {
+    said = speakLine(lineForLoss(afloat, lang, { who: who(m.sides[d]), k: m.shots[a] }), "lost");
   }
-  if (res.terminal) speakLine(lineForEnd(endKind(m), getLang()), endKind(m) === "victory" ? "sunk" : "miss");
+  if (res.terminal) said = speakLine(lineForEnd(endKind(m), lang), endKind(m));
+  if (said) m.called = m.turn; // that shot's news is enough: no "your turn" on top
+  else announceTurn();
 
   if (res.terminal) {
     stopMatch();
@@ -1639,12 +1671,9 @@ function gameScreen() {
     show(menuScreen);
   });
 
-  // One short line when the battle starts (in hot-seat games, once the first player has
-  // the device); turns are shown by the hat, not announced.
-  if (built && !over && match.attacker != null && !match.locked && !match.started) {
-    match.started = true;
-    speakLine(lineForStart(getLang()), "info");
-  }
+  // "Your turn!" when the battle starts with you, and in hot-seat games once the next
+  // player has the device (after a shot, fire() decides).
+  if (built) announceTurn();
 }
 
 // --- boot -------------------------------------------------------------------------------
