@@ -897,9 +897,9 @@ input[type="radio"] {
 
 .arena {
   display: grid;
-  grid-template-columns: 1fr minmax(170px, 210px) 1fr;
+  grid-template-columns: 1fr 1fr;
   align-items: start;
-  gap: 16px;
+  gap: 24px;
 }
 
 .board-panel {
@@ -1051,26 +1051,38 @@ input[type="radio"] {
 
 /* --- parrot ----------------------------------------------------------------------------- */
 
-.commentator {
-  position: relative;
-  align-self: center;
-  height: 420px;
-  z-index: 30;
-}
-
-.parrot-wrap {
-  position: relative;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
+/* The parrot flies over the page (parrot.js picks its perches); it never takes clicks. */
+.parrot-flyer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  pointer-events: none;
+  transition: opacity 0.25s;
+  will-change: transform;
 }
 
 .parrot {
-  width: 150px;
-  height: 188px;
-  flex: none;
+  width: 100%;
+  height: 100%;
+}
+
+.parrot .perch {
+  transition: opacity 0.2s;
+}
+
+/* In flight: fast wing beats, the branch it sat on stays behind, a lean forward. */
+.parrot.flying .perch {
+  opacity: 0;
+}
+
+.parrot.flying .wing {
+  animation: flap 0.09s ease-in-out infinite alternate;
+}
+
+.parrot.flying .bird {
+  animation: none;
+  transform: rotate(-10deg);
 }
 
 .parrot svg {
@@ -1209,53 +1221,154 @@ input[type="radio"] {
   }
 }
 
-/* The comic speech bubble. --bt is the bubble's resting position (it differs on phones). */
+/* The comic speech bubble. parrot.js places it in pixels next to the bird (data-side:
+   which way it extends; data-vertical: above, below or level with it) or, on a phone, as
+   a strip along the top (data-vertical="banner"). --bt is its resting transform. */
 .bubble {
-  --bt: translateX(-50%);
+  --bt: translate(0, 0);
   --bubble-bg: #ffffff;
-  position: absolute;
-  left: 50%;
-  bottom: 200px;
+  position: fixed;
+  left: 0;
+  top: 0;
   width: max-content;
-  min-width: 150px;
-  max-width: 260px;
+  min-width: 140px;
+  max-width: 300px; /* wide and short: two lines fit the free strips around the boards */
   padding: 12px 18px 10px;
   background: var(--bubble-bg);
   color: #151515;
   border: 4px solid #151515;
   border-radius: 28px / 24px;
-  font: 31px/1.02 var(--comic-font);
+  font: 27px/1.04 var(--comic-font);
   letter-spacing: 0.045em;
   text-align: center;
   box-shadow: 6px 7px 0 rgba(0, 0, 0, 0.35);
   transform: var(--bt) scale(0);
-  transform-origin: 62% 100%;
+  transform-origin: 20% 100%;
   opacity: 0;
   pointer-events: none;
-  z-index: 40;
+  z-index: 61;
 }
 
+.bubble[data-side="left"][data-vertical="above"] {
+  transform-origin: 80% 100%;
+}
+
+.bubble[data-side="right"][data-vertical="below"] {
+  transform-origin: 20% 0;
+}
+
+.bubble[data-side="left"][data-vertical="below"] {
+  transform-origin: 80% 0;
+}
+
+/* Level with the bird, beside it (when there is no room above or below). */
+.bubble[data-side="right"][data-vertical="middle"] {
+  transform-origin: 0 50%;
+}
+
+.bubble[data-side="left"][data-vertical="middle"] {
+  transform-origin: 100% 50%;
+}
+
+/* A phone: a strip along the top of the screen, no tail. */
+.bubble[data-vertical="banner"] {
+  max-width: none;
+  min-width: 0;
+  font-size: 22px;
+  padding: 8px 12px 7px;
+  transform-origin: 50% 0;
+}
+
+.bubble[data-vertical="banner"]::before,
+.bubble[data-vertical="banner"]::after {
+  display: none;
+}
+
+/* The tail points back at the parrot: down from a bubble above it, up from one below. */
 .bubble::before,
 .bubble::after {
   content: "";
   position: absolute;
-  top: 100%;
   width: 0;
   height: 0;
   border-style: solid;
 }
 
-.bubble::before {
-  left: calc(62% - 5px);
-  border-width: 30px 15px 0 15px;
+.bubble[data-side="right"]::before {
+  left: 14px;
+}
+
+.bubble[data-side="right"]::after {
+  left: 19px;
+}
+
+.bubble[data-side="left"]::before {
+  right: 14px;
+}
+
+.bubble[data-side="left"]::after {
+  right: 19px;
+}
+
+.bubble[data-vertical="above"]::before {
+  top: 100%;
+  border-width: 26px 15px 0 15px;
   border-color: #151515 transparent transparent transparent;
 }
 
-.bubble::after {
-  left: 62%;
+.bubble[data-vertical="above"]::after {
+  top: 100%;
   margin-top: -5px;
-  border-width: 22px 10px 0 10px;
+  border-width: 19px 10px 0 10px;
   border-color: var(--bubble-bg) transparent transparent transparent;
+}
+
+.bubble[data-vertical="below"]::before {
+  bottom: 100%;
+  border-width: 0 15px 26px 15px;
+  border-color: transparent transparent #151515 transparent;
+}
+
+.bubble[data-vertical="below"]::after {
+  bottom: 100%;
+  margin-bottom: -5px;
+  border-width: 0 10px 19px 10px;
+  border-color: transparent transparent var(--bubble-bg) transparent;
+}
+
+.bubble[data-vertical="middle"]::before,
+.bubble[data-vertical="middle"]::after {
+  top: 50%;
+}
+
+.bubble[data-side="right"][data-vertical="middle"]::before {
+  left: -22px;
+  margin-top: -12px;
+  border-width: 12px 22px 12px 0;
+  border-color: transparent #151515 transparent transparent;
+}
+
+.bubble[data-side="right"][data-vertical="middle"]::after {
+  left: -14px;
+  margin-top: -8px;
+  border-width: 8px 15px 8px 0;
+  border-color: transparent var(--bubble-bg) transparent transparent;
+}
+
+.bubble[data-side="left"][data-vertical="middle"]::before {
+  left: auto;
+  right: -22px;
+  margin-top: -12px;
+  border-width: 12px 0 12px 22px;
+  border-color: transparent transparent transparent #151515;
+}
+
+.bubble[data-side="left"][data-vertical="middle"]::after {
+  left: auto;
+  right: -14px;
+  margin-top: -8px;
+  border-width: 8px 0 8px 15px;
+  border-color: transparent transparent transparent var(--bubble-bg);
 }
 
 .bubble-text {
@@ -1325,7 +1438,7 @@ input[type="radio"] {
 .bubble.mood-sunk {
   --bubble-bg: #ffe14d;
   color: #b30000;
-  font-size: 34px;
+  font-size: 29px;
   border-width: 5px;
   box-shadow: 0 0 0 4px #fff, 7px 9px 0 rgba(0, 0, 0, 0.4), 0 0 26px rgba(255, 200, 40, 0.8);
 }
@@ -2233,60 +2346,6 @@ progress {
 
   .board-grid {
     --cell: min(36px, calc((100vw - 114px) / var(--size, 10)));
-  }
-
-  /* The parrot rides along at the top of the screen, speaking to the right. */
-  .commentator {
-    order: -1;
-    position: sticky;
-    top: 0;
-    height: 112px;
-    margin: 0 -16px;
-    padding: 4px 16px 0;
-    background: linear-gradient(180deg, rgba(4, 22, 40, 0.96), rgba(4, 22, 40, 0.82));
-    border-bottom: 2px solid var(--line);
-    border-radius: 0 0 16px 16px;
-  }
-
-  .parrot-wrap {
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: flex-end;
-  }
-
-  .parrot {
-    width: 84px;
-    height: 106px;
-  }
-
-  .bubble {
-    --bt: translateY(50%);
-    left: 108px;
-    bottom: 50%;
-    max-width: calc(100% - 124px);
-    min-width: 0;
-    font-size: 25px;
-    transform-origin: 0 50%;
-  }
-
-  .bubble.mood-sunk {
-    font-size: 26px;
-  }
-
-  .bubble::before {
-    top: 50%;
-    left: -24px;
-    margin-top: -12px;
-    border-width: 12px 24px 12px 0;
-    border-color: transparent #151515 transparent transparent;
-  }
-
-  .bubble::after {
-    top: 50%;
-    left: -15px;
-    margin-top: -8px;
-    border-width: 8px 16px 8px 0;
-    border-color: transparent var(--bubble-bg) transparent transparent;
   }
 
   .pirate-stage {

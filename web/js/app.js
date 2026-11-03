@@ -775,6 +775,9 @@ function placementScreen(i) {
 // --- hot-seat ---------------------------------------------------------------------------
 
 function passScreen(i, then) {
+  // The parrot belongs to the game screen; it comes back with it after the hand-over.
+  layout?.parrot.destroy();
+  layout = null;
   const name = match.sides[i].name;
   const other = match.sides[1 - i].name;
   app.innerHTML = `
@@ -810,8 +813,14 @@ function boardEl(side) {
 
 // The parrot speaks rarely (see parrot-lines.js); its words always appear in the bubble
 // too, and are also said out loud when sound is on. Set with textContent, never as HTML.
-function speakLine(text, mood) {
-  if (text) layout?.parrot.say(text, { mood, voice: text });
+// `watch` is the board the player is looking at: the parrot flies next to it to speak.
+function speakLine(text, mood, watch = app.querySelector("#board-right")) {
+  if (text) layout?.parrot.say(text, { mood, voice: text, watch, quick: quickGame() });
+}
+
+// Fast bot-v-bot games have no time for flights: the parrot only shows its bubble.
+function quickGame() {
+  return match?.mode === "bvb" && settings.speed === "fast";
 }
 
 // How the end screen addresses a human: "deckhand Ana", "Captain Ana", or just the rank.
@@ -842,7 +851,8 @@ function beginBattle() {
   match.log.push({ key: "first_shooter", vars: { name: match.sides[match.attacker].name } });
   if (match.mode === "hvh") show(() => passScreen(match.attacker, () => show(gameScreen)));
   else show(gameScreen);
-  continueTurn(true);
+  // A bot that opens waits a little longer; a hot-seat game has just had its hand-over.
+  continueTurn(match.mode !== "hvh");
 }
 
 function forfeit(i, reason) {
@@ -914,15 +924,16 @@ async function fire(shot) {
   }
   const shooter = m.sides[a];
   if (outcome === "sunk" && shooter.kind === "human") shooter.rank = "captain"; // promoted
+  if (landed) layout?.parrot.rest(cellRect(landed, ...shot), { quick: quickGame() }); // perch near the shot
   // Silent on water and plain hits. When a person sinks a ship: how many enemy ships are
   // still afloat, as the engine counts them (the last sink gives way to the end-of-game
   // line). A bot's sinks are not counted aloud, and in hot-seat games only the shooter's
   // own shot is spoken of, never anything about the other player's board.
   if (shooter.kind === "human") {
     const afloat = arena.call("status", res.board).view.remaining.length;
-    speakLine(lineForShot(outcome, afloat, getLang()), "sunk");
+    speakLine(lineForShot(outcome, afloat, getLang()), "sunk", landed);
   }
-  if (res.terminal) speakLine(lineForEnd(endKind(m), getLang()), endKind(m) === "victory" ? "sunk" : "miss");
+  if (res.terminal) speakLine(lineForEnd(endKind(m), getLang()), endKind(m) === "victory" ? "sunk" : "miss", landed);
 
   if (res.terminal) {
     stopMatch();
@@ -1025,7 +1036,7 @@ function showEnd(m) {
 function ensureLayout() {
   const { left } = boardSides();
   const key = `${match.id}:${left}`;
-  if (layout?.key === key && app.contains(layout.dock)) return false;
+  if (layout?.key === key && app.contains(layout.root)) return false;
   layout?.parrot.destroy();
   const panel = (id) => `
     <div class="board-panel" id="panel-${id}">
@@ -1037,13 +1048,12 @@ function ensureLayout() {
     <section class="game">
       <div class="arena">
         ${panel("left")}
-        <div class="commentator" id="parrot-dock"></div>
         ${panel("right")}
       </div>
       <div class="game-side" id="game-side"></div>
     </section>`;
-  const dock = app.querySelector("#parrot-dock");
-  layout = { key, dock, parrot: createParrot(dock), active: null, logOpen: false };
+  // The parrot is not part of the layout: it flies over the page (see parrot.js).
+  layout = { key, root: app.querySelector(".game"), parrot: createParrot(), active: null, logOpen: false };
   return true;
 }
 

@@ -11,7 +11,9 @@ the same code plays the official tournament in CI and runs in your browser via
 - **Your pirate name**: the page asks for it and the parrot calls you by it (deckhand until
   you sink your first ship, captain after that). It is stored only in your own browser
   (`localStorage`); nothing is sent anywhere.
-- **The parrot** speaks rarely: when the battle starts, when you sink a ship (telling you
+- **The parrot** flies around the screen, perching on free spots so it never covers the
+  boards or buttons; it flies next to the board you are watching when it speaks (no
+  flights with *reduce motion*, only fades). It speaks rarely: when the battle starts, when you sink a ship (telling you
   how many enemy ships are left) and when the game ends. Its words always appear in its
   speech bubble. Its lines live in `web/js/parrot-lines.js` if you want other words.
 - **Sound**: off until you turn it on with 🔊 (the page remembers your choice). The parrot

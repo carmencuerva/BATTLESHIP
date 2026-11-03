@@ -11,7 +11,9 @@ navegador gracias a [Pyodide](https://pyodide.org).
 - **Tu nombre pirata**: la web te lo pide y el loro te llama por él (grumete hasta que
   hundes tu primer barco, y capitán o capitana después, como elijas). Se guarda solo en tu
   navegador (`localStorage`); no se envía a ningún sitio.
-- **El loro** habla poco: al empezar la batalla, cuando hundes un barco (te dice cuántos
+- **El loro** vuela por la pantalla y se posa en huecos libres, sin tapar los tableros ni
+  los botones; para hablar vuela junto al tablero que estás mirando (con *reducir
+  movimiento* no vuela, solo aparece y desaparece). Habla poco: al empezar la batalla, cuando hundes un barco (te dice cuántos
   barcos enemigos quedan) y al terminar. Lo que dice sale siempre en su bocadillo. Sus
   frases están en `web/js/parrot-lines.js` por si queréis otras palabras.
 - **Sonido**: apagado hasta que lo enciendes con 🔊 (la web recuerda tu elección). Entonces
