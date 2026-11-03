@@ -11,9 +11,13 @@ navegador gracias a [Pyodide](https://pyodide.org).
 - **Tu nombre pirata**: la web te lo pide y el loro te llama por él (grumete hasta que
   hundes tu primer barco, y capitán o capitana después, como elijas). Se guarda solo en tu
   navegador (`localStorage`); no se envía a ningún sitio.
-- **El loro** vuela por la pantalla y se posa en huecos libres, sin tapar los tableros ni
-  los botones; para hablar vuela junto al tablero que estás mirando (con *reducir
-  movimiento* no vuela, solo aparece y desaparece). Habla poco: al empezar la batalla, cuando hundes un barco (te dice cuántos
+- **El camarote del capitán**: cada partida se prepara dentro del camarote. Las tres
+  miniaturas de la carta eligen el modo y los objetos de la mesa guardan el resto: el
+  cartel de «Se busca» (tu nombre), el catalejo (el capitán enemigo), las maquetas (la
+  flota), el compás (el tamaño del mar), la brújula (el viento) y el cuaderno de bitácora
+  (el código del pirata). Todo lo dibuja el propio código de la web (`web/js/cabin-art.js`).
+- **El loro** está quieto en su percha entre los dos tableros, así que nunca los tapa.
+  Habla poco: al empezar la batalla, cuando hundes un barco (te dice cuántos
   barcos enemigos quedan) y al terminar. Lo que dice sale siempre en su bocadillo. Sus
   frases están en `web/js/parrot-lines.js` por si queréis otras palabras.
 - **Sonido**: apagado hasta que lo enciendes con 🔊 (la web recuerda tu elección). Entonces

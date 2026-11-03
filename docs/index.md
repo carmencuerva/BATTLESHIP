@@ -11,9 +11,13 @@ the same code plays the official tournament in CI and runs in your browser via
 - **Your pirate name**: the page asks for it and the parrot calls you by it (deckhand until
   you sink your first ship, captain after that). It is stored only in your own browser
   (`localStorage`); nothing is sent anywhere.
-- **The parrot** flies around the screen, perching on free spots so it never covers the
-  boards or buttons; it flies next to the board you are watching when it speaks (no
-  flights with *reduce motion*, only fades). It speaks rarely: when the battle starts, when you sink a ship (telling you
+- **The captain's cabin**: you set up each game inside the captain's cabin. The three
+  miniatures on the chart choose the mode, and the objects on the table hold the rest:
+  the wanted poster (your name), the spyglass (the enemy captain), the ship models (the
+  fleet), the dividers (the size of the sea), the compass (the wind) and the logbook (the
+  pirate code). Everything in it is drawn by the page's own code (`web/js/cabin-art.js`).
+- **The parrot** sits still on its perch between the two boards, so it never covers them.
+  It speaks rarely: when the battle starts, when you sink a ship (telling you
   how many enemy ships are left) and when the game ends. Its words always appear in its
   speech bubble. Its lines live in `web/js/parrot-lines.js` if you want other words.
 - **Sound**: off until you turn it on with 🔊 (the page remembers your choice). The parrot

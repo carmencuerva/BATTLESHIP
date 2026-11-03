@@ -3,27 +3,25 @@
 
 import { startArena } from "../pyodide-bootstrap.js";
 import { cellRect, coord, lockBoard, renderBoard, UNKNOWN } from "./board.js";
+import { COMPASS, DIVIDERS, LOGBOOK, MINIATURES, MODELS, POSTER, SEA, SPYGLASS, chartSvg, lanternSvg, sceneSvg } from "./cabin-art.js";
 import {
   addShip,
   changeLength,
-  chartSvg,
-  COMPASS,
+  chartQuad,
+  chooseLayout,
   dangerLevels,
-  DESTINATION_ART,
-  destinationSpot,
-  DIVIDERS,
+  DESTINATIONS,
+  destinationPoint,
   FLEET_MAX,
-  LANTERN,
-  LOGBOOK,
+  fitScene,
+  LAYOUTS,
   LOGO,
   parseFleet,
-  PORTRAIT,
+  propPoint,
+  quadTransform,
   removeShip,
-  SKULL,
   SPEAKER_OFF,
   SPEAKER_ON,
-  SPYGLASS,
-  WINDOW,
 } from "./cabin.js";
 import { MAX_COLUMNS } from "./coords.js";
 import { closeEndScreen, showEndScreen } from "./endscreen.js";
@@ -79,6 +77,7 @@ function show(render) {
   screen += 1;
   current = render;
   keyHandler = null;
+  document.body.classList.toggle("in-cabin", render === menuScreen); // the cabin fills the screen
   render();
   scrollTo(0, 0); // a new screen starts at its top, not where the last one was scrolled to
 }
@@ -149,7 +148,9 @@ function ensureSoundControls() {
   }
 }
 ensureSoundControls();
-document.querySelector(".top h1")?.insertAdjacentHTML("afterbegin", LOGO);
+// The title with its drawn emblem (replacing whatever an older cached page had there).
+const heading = document.querySelector(".top h1");
+if (heading) heading.innerHTML = `${LOGO}<span class="logo-text">Battleship Arena</span>`;
 
 // The general switch (also starts the music, see music.js) and the two sliders.
 document.getElementById("sound").addEventListener("click", () => {
@@ -192,38 +193,51 @@ for (const [id, [, screenFn]] of Object.entries(NAV)) {
 
 // --- the captain's cabin (the "Set sail!" screen) ----------------------------------------
 //
-// The setup screen is a scene: a stern window onto the sea, a swinging lantern, a wanted
-// poster on the wall and a strategy table with a chart. The chart's three destinations
-// choose the mode; the props open small panels holding the settings (name, enemy captain,
-// fleet, size of the sea, wind, the pirate code). Every prop is a real button wired to the
-// same settings and checks as before.
+// The setup screen is the captain's cabin, seen standing in front of his table: the stern
+// windows and the sea at the back, a bookshelf and the captain's chair, and on the table
+// the chart (its three destinations choose the mode) and the objects that hold the other
+// settings: the wanted poster (your name), the spyglass (the enemy captain), the ship models
+// (the fleet), the compass (the wind), the dividers (the size of the sea) and the logbook
+// (the pirate code). Every object is a real button wired to the same settings and checks as
+// before; its panel opens next to it. The room is one picture (cabin-art.js) scaled to fit;
+// the objects stand on it in the same coordinates, and their labels keep a readable size.
 
 const WINDS = { slow: -40, normal: 20, fast: 80 }; // compass needle angle for each wind
-const cabin = { panel: null, focus: null, trigger: null }; // the open panel, if any
+const cabin = { panel: null, trigger: null, layout: null };
+const sceneUrls = {};
+
+// The room picture as an image (drawn once by the browser, then cached).
+function sceneUrl(layout) {
+  sceneUrls[layout] ??= URL.createObjectURL(new Blob([sceneSvg(layout)], { type: "image/svg+xml" }));
+  return sceneUrls[layout];
+}
 
 function reducedMotionWanted() {
   return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
+const px = (n) => `${Math.round(n * 10) / 10}px`;
+
 function shipsLabel(n) {
   return tn("ships", n);
 }
 
+// Danger as five notches, filled up to `level`.
 function dangerHtml(level) {
   if (!level) return "";
-  return `<span class="danger" role="img" aria-label="${th("danger_of", { n: level })}">${SKULL.repeat(level)}</span>`;
+  const notches = [1, 2, 3, 4, 5].map((i) => `<i${i <= level ? ' class="on"' : ""}></i>`).join("");
+  return `<span class="danger" role="img" aria-label="${th("danger_of", { n: level })}">${notches}</span>`;
 }
 
 function captainLevels() {
   return dangerLevels(ranking?.data?.standings, players.map((p) => p.name));
 }
 
-// What the props show on the table, refreshed after every change.
+// What the objects show on their labels, refreshed after every change.
 function cabinSummaries() {
   const levels = captainLevels();
-  const named = (value, fallback) => esc(value || t(fallback));
   let poster;
-  if (settings.mode === "hvb") poster = named(settings.nameMe, "poster_nameless");
+  if (settings.mode === "hvb") poster = esc(settings.nameMe || t("poster_nameless"));
   else if (settings.mode === "hvh") poster = th("poster_two", { a: settings.nameA || t("name_a"), b: settings.nameB || t("name_b") });
   else poster = th("poster_watch");
   let enemy;
@@ -247,12 +261,13 @@ function refreshCabin() {
     if (el) el.innerHTML = html;
   };
   set(".poster-name", s.poster);
-  set(".spyglass .prop-value", s.enemy);
-  set('[data-focus="fleet"] .prop-value', s.fleet);
-  set('[data-focus="wind"] .prop-value', s.wind);
-  set('[data-focus="size"] .prop-value', s.size);
+  set('[data-prop="poster"] .tag-value', s.poster);
+  set('[data-prop="spyglass"] .tag-value', s.enemy);
+  set('[data-prop="models"] .tag-value', s.fleet);
+  set('[data-prop="compass"] .tag-value', s.wind);
+  set('[data-prop="dividers"] .tag-value', s.size);
   set(".prepare small", s.voyage);
-  const needle = app.querySelector(".compass-art .needle");
+  const needle = app.querySelector(".compass .needle");
   if (needle) needle.style.transform = `rotate(${WINDS[settings.speed] ?? 0}deg)`;
 }
 
@@ -348,11 +363,11 @@ function closePanel({ restoreFocus = true } = {}) {
   if (restoreFocus) back?.focus({ preventScroll: true });
 }
 
-// Opens the panel of a prop next to it (a bottom sheet on phones) and wires its fields.
+// Opens the panel of an object beside it (a bottom sheet on phones) and wires its fields.
 function openPanel(trigger, kind, focusPart = null) {
   if (trigger.getAttribute("aria-disabled") === "true") return;
   const panel = app.querySelector("#cabin-panel");
-  if (cabin.panel === kind && !focusPart) {
+  if (cabin.panel === kind && cabin.trigger === trigger && !focusPart) {
     closePanel();
     return;
   }
@@ -362,30 +377,49 @@ function openPanel(trigger, kind, focusPart = null) {
   trigger.classList.add("open");
   trigger.setAttribute("aria-expanded", "true");
   panel.innerHTML = `<button type="button" class="panel-close" aria-label="${th("close")}">×</button>${panelHtml(kind)}`;
-  panel.setAttribute("aria-label", trigger.querySelector(".prop-label")?.textContent ?? "");
+  panel.setAttribute("aria-label", trigger.getAttribute("aria-label") ?? "");
   panel.hidden = false;
-  const scene = app.querySelector(".cabin").getBoundingClientRect();
-  const at = trigger.getBoundingClientRect();
-  const width = Math.min(360, scene.width - 16);
-  // beside the prop when there is room on its left (the table's side column), else below it
-  const beside = at.left - scene.left >= width + 24;
-  const left = beside ? at.left - scene.left - width - 12 : Math.max(8, Math.min(at.left - scene.left, scene.width - width - 8));
-  panel.style.left = `${left}px`;
-  panel.style.top = `${beside ? Math.max(8, at.top - scene.top - 40) : at.bottom - scene.top + 8}px`;
-  panel.style.width = `${width}px`;
+  placePanel(panel, trigger);
   wirePanel(panel, kind);
   const target = (focusPart && panel.querySelector(`#part-${focusPart}`)) || panel;
   if (focusPart) target.scrollIntoView({ block: "nearest" });
   (target.querySelector("input, select, button:not(.panel-close)") ?? panel.querySelector(".panel-close")).focus({ preventScroll: true });
 }
 
+// Beside the object when there is room (right, else left), otherwise below or above it.
+function placePanel(panel, trigger) {
+  const room = app.querySelector(".cabin").getBoundingClientRect();
+  const at = trigger.getBoundingClientRect();
+  const width = Math.min(360, room.width - 16);
+  const l = at.left - room.left;
+  const rgt = at.right - room.left;
+  const tp = at.top - room.top;
+  const bt = at.bottom - room.top;
+  panel.style.width = px(width);
+  panel.style.maxHeight = px(room.height - 16);
+  const height = panel.offsetHeight;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
+  let left;
+  let top;
+  if (rgt + 12 + width <= room.width - 8 || l - 12 - width >= 8) {
+    left = rgt + 12 + width <= room.width - 8 ? rgt + 12 : l - 12 - width;
+    top = clamp(tp, 8, room.height - height - 8);
+  } else {
+    left = clamp((l + rgt) / 2 - width / 2, 8, room.width - width - 8);
+    top = bt + 8 + height <= room.height - 8 ? bt + 8 : Math.max(8, tp - 8 - height);
+  }
+  panel.style.left = px(left);
+  panel.style.top = px(top);
+}
+
 function wirePanel(panel, kind) {
   panel.querySelector(".panel-close").addEventListener("click", () => closePanel());
   const on = (sel, type, fn) => panel.querySelector(sel)?.addEventListener(type, fn);
-  const text = (id, key) => on(`#${id}`, "input", (e) => {
-    settings[key] = e.target.value.trim();
-    refreshCabin();
-  });
+  const text = (id, key) =>
+    on(`#${id}`, "input", (e) => {
+      settings[key] = e.target.value.trim();
+      refreshCabin();
+    });
   text("name-me", "nameMe");
   text("name-a", "nameA");
   text("name-b", "nameB");
@@ -442,7 +476,7 @@ function wirePanel(panel, kind) {
   }
 }
 
-// Leaving the cabin for the battle: a short dive through the stern window.
+// Leaving the cabin for the battle: the room rushes towards the stern windows and the sea.
 function embark(then) {
   if (reducedMotionWanted()) {
     then();
@@ -460,73 +494,126 @@ function embark(then) {
   }, 620);
 }
 
-function menuScreen() {
-  if (!ranking) loadRanking(); // for the enemy captains' danger marks
+// Scales the room to the cabin's box; a new composition when the screen changes shape.
+function fitCabin() {
+  const box = app.querySelector(".cabin");
+  if (!box) return;
+  const { width, height } = box.getBoundingClientRect();
+  if (chooseLayout(width, height) !== cabin.layout) {
+    menuScreen();
+    return;
+  }
+  const { k, x, y } = fitScene(cabin.layout, width, height);
+  const layer = box.querySelector(".cabin-layer");
+  layer.style.transform = `translate(${px(x)}, ${px(y)}) scale(${k})`;
+  layer.style.setProperty("--k", String(k));
+}
+
+// The cabin fills the screen under the header.
+function sizeCabin() {
+  const header = document.querySelector(".top");
+  document.documentElement.style.setProperty("--header-h", px(header?.offsetHeight ?? 0));
+}
+
+addEventListener("resize", () => {
+  if (current !== menuScreen || !app.querySelector(".cabin")) return;
+  closePanel({ restoreFocus: false });
+  sizeCabin();
+  fitCabin();
+});
+
+// One object of the cabin: a button standing at its spot, with its picture and its label.
+function propHtml(layout, name, { art, aspect, panel, focus = null, label, value, disabled = false }) {
+  const p = propPoint(layout, name);
+  const style = `left:${px(p.x - p.w / 2)};top:${px(p.y - p.w * aspect)};width:${px(p.w)};height:${px(p.w * aspect)}`;
+  return `
+    <button type="button" class="prop ${name}${LAYOUTS[layout].props[name].tag === "above" ? " tag-above" : ""}" data-prop="${name}" data-panel="${panel}"${focus ? ` data-focus="${focus}"` : ""}
+      aria-expanded="false" aria-label="${label}"${disabled ? ' aria-disabled="true"' : ""} style="${style}">
+      ${art}
+      <span class="prop-tag" aria-hidden="true"><span class="tag-label">${label}</span><span class="tag-value">${value}</span></span>
+    </button>`;
+}
+
+function cabinHtml(layout) {
+  const L = LAYOUTS[layout];
   const mode = settings.mode;
   const s = cabinSummaries();
-  cabin.panel = null;
-  cabin.trigger = null;
+  const { canvas: c, windows: w, table: tb } = L;
+  const lanterns = L.lanterns
+    .map((l) => {
+      const height = ((l.drop + 150) * l.w) / 80;
+      return `<div class="lantern" aria-hidden="true" style="left:${px(l.x - l.w / 2)};top:${px(l.y)};width:${px(l.w)};height:${px(height)}">
+        <span class="lantern-glow" style="top:${px(((l.drop + 90) * l.w) / 80)}"></span>${lanternSvg(l.drop)}</div>`;
+    })
+    .join("");
   const destinations = ["hvb", "bvb", "hvh"]
     .map((m) => {
-      const spot = destinationSpot(m);
+      const p = destinationPoint(layout, m);
+      const size = 190 * p.scale;
       const chosen = m === mode;
       return `
-        <label class="destination${chosen ? " chosen" : ""}" style="left:${spot.left}%;top:${spot.top}%">
+        <label class="destination label-${DESTINATIONS[m].label}${chosen ? " chosen" : ""}" style="left:${px(p.x - size / 2)};top:${px(p.y - size * 0.86)};width:${px(size)};height:${px(size)}">
           <input type="radio" name="mode" value="${m}"${chosen ? " checked" : ""} aria-describedby="dest-tip-${m}">
-          <span class="dest-art">${DESTINATION_ART[m]}</span>
-          <span class="dest-name">${th(`mode_${m}`)}</span>
-          <span class="dest-tip" id="dest-tip-${m}">${th(`dest_${m}`)}</span>
+          ${MINIATURES[m]}
+          <span class="dest-label"><span class="dest-name">${th(`mode_${m}`)}</span><span class="dest-tip" id="dest-tip-${m}">${th(`dest_${m}`)}</span></span>
         </label>`;
     })
     .join("");
-  const prop = (kind, art, label, value, extra = "") =>
-    `<button type="button" class="prop prop-small" data-panel="${kind}" ${extra} aria-expanded="false">
-       <span class="prop-art">${art}</span><span class="prop-label">${label}</span><span class="prop-value">${value}</span>
-     </button>`;
-  const noPoster = mode === "bvb";
-  const noSpy = mode === "hvh";
-
-  app.innerHTML = `
-    <section class="cabin" aria-labelledby="cabin-title">
-      <div class="cabin-plaque">
+  const cq = chartQuad(layout);
+  const poster = L.poster;
+  const posterFoot = { x: (poster[2].x + poster[3].x) / 2, y: Math.max(poster[2].y, poster[3].y) };
+  // standing on the table's front edge, growing upwards with their text
+  const face = (x, width) => `left:${px(x - width / 2)};bottom:${px(L.size.h - tb.face + 10)};width:${px(width)}`;
+  return `
+    <div class="cabin-layer">
+      <div class="sea" aria-hidden="true" style="left:${px(w.x0 - 40)};top:${px(w.y0 - 40)};width:${px(w.x1 - w.x0 + 80)};height:${px(w.y1 - w.y0 + 70)}">${SEA}</div>
+      <img class="room" src="${sceneUrl(layout)}" alt="" style="left:${px(c.x)};top:${px(c.y)};width:${px(c.w)};height:${px(c.h)}">
+      <div class="cabin-title" style="left:${px(L.title.x)};top:${px(L.title.y)}">
         <h2 id="cabin-title">${th("menu_title")}</h2>
         <p>${th("menu_sub")}</p>
       </div>
-      <div class="cabin-window">
-        ${WINDOW}
-        <div class="lantern" aria-hidden="true"><span class="lantern-glow"></span>${LANTERN}</div>
-      </div>
-      <button type="button" class="prop poster" data-panel="poster" aria-expanded="false"${noPoster ? ' aria-disabled="true"' : ""}>
+      <div class="chart" style="transform:${quadTransform(1600, 920, cq)}">${chartSvg(mode, esc(t("chart_sea")))}</div>
+      <div class="table-light" aria-hidden="true"></div>
+      <div class="destinations" role="radiogroup" aria-label="${th("mode")}">${destinations}</div>
+      <p class="chart-note" style="left:${px((cq[2].x + cq[3].x) / 2)};top:${px(L.chart.front + 10)}">${th(`dest_${mode}`)}</p>
+      <button type="button" class="prop poster" data-prop="poster" data-panel="poster" aria-expanded="false" aria-label="${th("prop_poster")}"
+        ${mode === "bvb" ? 'aria-disabled="true"' : ""} style="transform:${quadTransform(220, 300, poster)}">
+        ${POSTER}
         <span class="wanted">${th("wanted")}</span>
-        <span class="poster-portrait">${PORTRAIT}</span>
         <span class="poster-name">${s.poster}</span>
         <span class="poster-reward">${th("reward")}</span>
-        <span class="prop-label">${th("prop_poster")}</span>
       </button>
-      <div class="tabletop" aria-hidden="true"></div>
-      <div class="chart" role="radiogroup" aria-label="${th("mode")}">
-        ${chartSvg(mode, esc(t("chart_sea")))}
-        ${destinations}
+      <span class="prop-tag poster-tag" data-prop="poster" aria-hidden="true" style="left:${px(posterFoot.x)};top:${px(posterFoot.y + 10)}">
+        <span class="tag-label">${th("prop_poster")}</span><span class="tag-value">${s.poster}</span></span>
+      ${propHtml(layout, "models", { art: MODELS, aspect: 190 / 320, panel: "voyage", focus: "fleet", label: th("prop_models"), value: s.fleet })}
+      ${propHtml(layout, "dividers", { art: DIVIDERS, aspect: 120 / 200, panel: "voyage", focus: "size", label: th("prop_marks"), value: s.size })}
+      ${propHtml(layout, "compass", { art: COMPASS, aspect: 170 / 200, panel: "voyage", focus: "wind", label: th("prop_compass"), value: s.wind })}
+      ${propHtml(layout, "spyglass", { art: SPYGLASS, aspect: 140 / 380, panel: "spyglass", label: th("prop_spyglass"), value: s.enemy, disabled: mode === "hvh" })}
+      ${propHtml(layout, "logbook", { art: LOGBOOK, aspect: 170 / 260, panel: "code", label: th("prop_logbook"), value: th("code_title") })}
+      ${lanterns}
+      <button type="button" class="prepare" data-panel="voyage" aria-expanded="false" aria-label="${th("prepare")}" style="${face(L.face.prepare.x, L.face.prepare.w)}">
+        <span>${th("prepare")}</span><small>${s.voyage}</small></button>
+      <div class="launch" style="${face(L.face.start.x, L.face.start.w)}">
+        <p id="menu-error" class="menu-error" role="alert"></p>
+        <button id="start" class="start">${th("start")}</button>
       </div>
-      <p class="chart-note"><span class="chart-pick">${th("chart_hint")}</span> ${th(`dest_${mode}`)}</p>
-      <button type="button" class="prop spyglass" data-panel="spyglass" aria-expanded="false"${noSpy ? ' aria-disabled="true"' : ""}>
-        <span class="prop-art">${SPYGLASS}</span>
-        <span class="prop-label">${th("prop_spyglass")}</span>
-        <span class="prop-value">${s.enemy}</span>
-      </button>
-      <div class="props">
-        ${prop("voyage", miniShip(5) + miniShip(3), th("prop_models"), s.fleet, 'data-focus="fleet"')}
-        ${prop("voyage", COMPASS, th("prop_compass"), s.wind, 'data-focus="wind"')}
-        ${prop("voyage", DIVIDERS, th("prop_marks"), s.size, 'data-focus="size"')}
-        ${prop("code", LOGBOOK, th("prop_logbook"), th("code_title"))}
-        <button type="button" class="prepare" data-panel="voyage" aria-expanded="false">${th("prepare")}<small>${s.voyage}</small></button>
-      </div>
-      <div class="launch">
-        <button id="start" class="primary board-button">${th("start")}</button>
-        <p id="menu-error" class="error" role="alert"></p>
-      </div>
-      <div id="cabin-panel" class="cabin-panel" role="dialog" hidden></div>
-    </section>`;
+    </div>
+    <div class="table-glow" aria-hidden="true"></div>
+    <div id="cabin-panel" class="cabin-panel" role="dialog" hidden></div>`;
+}
+
+function menuScreen() {
+  if (!ranking) loadRanking(); // for the enemy captains' danger marks
+  cabin.panel = null;
+  cabin.trigger = null;
+  sizeCabin();
+  app.innerHTML = `<section class="cabin" aria-labelledby="cabin-title"></section>`;
+  const box = app.querySelector(".cabin");
+  const { width, height } = box.getBoundingClientRect();
+  cabin.layout = chooseLayout(width, height);
+  box.dataset.layout = cabin.layout;
+  box.innerHTML = cabinHtml(cabin.layout);
+  fitCabin();
   refreshCabin();
 
   app.querySelectorAll('input[name="mode"]').forEach((radio) =>
@@ -562,7 +649,7 @@ function menuScreen() {
   });
 }
 
-// A click anywhere else closes the open prop panel.
+// A click anywhere else closes the open panel.
 document.addEventListener("click", () => {
   if (cabin.panel) closePanel({ restoreFocus: false });
 });
@@ -1153,14 +1240,8 @@ function boardEl(side) {
 
 // The parrot speaks rarely (see parrot-lines.js); its words always appear in the bubble
 // too, and are also said out loud when sound is on. Set with textContent, never as HTML.
-// `watch` is the board the player is looking at: the parrot flies next to it to speak.
-function speakLine(text, mood, watch = app.querySelector("#board-right")) {
-  if (text) layout?.parrot.say(text, { mood, voice: text, watch, quick: quickGame() });
-}
-
-// Fast bot-v-bot games have no time for flights: the parrot only shows its bubble.
-function quickGame() {
-  return match?.mode === "bvb" && settings.speed === "fast";
+function speakLine(text, mood) {
+  if (text) layout?.parrot.say(text, { mood, voice: text });
 }
 
 // How the end screen addresses a human: "deckhand Ana", "Captain Ana", or just the rank.
@@ -1264,16 +1345,15 @@ async function fire(shot) {
   }
   const shooter = m.sides[a];
   if (outcome === "sunk" && shooter.kind === "human") shooter.rank = "captain"; // promoted
-  if (landed) layout?.parrot.rest(cellRect(landed, ...shot), { quick: quickGame() }); // perch near the shot
   // Silent on water and plain hits. When a person sinks a ship: how many enemy ships are
   // still afloat, as the engine counts them (the last sink gives way to the end-of-game
   // line). A bot's sinks are not counted aloud, and in hot-seat games only the shooter's
   // own shot is spoken of, never anything about the other player's board.
   if (shooter.kind === "human") {
     const afloat = arena.call("status", res.board).view.remaining.length;
-    speakLine(lineForShot(outcome, afloat, getLang()), "sunk", landed);
+    speakLine(lineForShot(outcome, afloat, getLang()), "sunk");
   }
-  if (res.terminal) speakLine(lineForEnd(endKind(m), getLang()), endKind(m) === "victory" ? "sunk" : "miss", landed);
+  if (res.terminal) speakLine(lineForEnd(endKind(m), getLang()), endKind(m) === "victory" ? "sunk" : "miss");
 
   if (res.terminal) {
     stopMatch();
@@ -1388,12 +1468,13 @@ function ensureLayout() {
     <section class="game">
       <div class="arena">
         ${panel("left")}
+        <div class="commentator" id="parrot-dock"></div>
         ${panel("right")}
       </div>
       <div class="game-side" id="game-side"></div>
     </section>`;
-  // The parrot is not part of the layout: it flies over the page (see parrot.js).
-  layout = { key, root: app.querySelector(".game"), parrot: createParrot(), active: null, logOpen: false };
+  // The parrot sits still on its perch between the boards (see parrot.js).
+  layout = { key, root: app.querySelector(".game"), parrot: createParrot(app.querySelector("#parrot-dock")), active: null, logOpen: false };
   return true;
 }
 
