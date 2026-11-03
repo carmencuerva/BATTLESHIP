@@ -48,7 +48,7 @@ const grainOver = (clip, filter, region, opacity = 1) =>
 // Back wall: horizontal hull planks with butt joints and nails, and the ship's frames.
 function backWall(L, rand) {
   const { x0, x1, top, bottom } = L.wall;
-  const colours = ["#5b3519", "#52301a", "#60391c", "#4c2b15", "#573318"];
+  const colours = ["#7a3e1c", "#6e371a", "#82451f", "#663217", "#74401d"];
   let out = "";
   const plank = 31;
   for (let y = top, i = 0; y < bottom; y += plank, i++) {
@@ -89,7 +89,7 @@ function sideWall(L, side, rand) {
   const topEdge = alongX(vp, { x: wx, y: wall.top }, ex);
   const bottomEdge = alongX(vp, { x: wx, y: wall.bottom }, ex);
   const outline = [{ x: wx, y: wall.top }, topEdge, bottomEdge, { x: wx, y: wall.bottom }];
-  const colours = ["#4a2a14", "#432612", "#4e2d16", "#3f2310"];
+  const colours = ["#66341a", "#5c2f17", "#6c381b", "#552b15"];
   let planks = "";
   const step = 31;
   for (let y = wall.top, i = 0; y < wall.bottom; y += step, i++) {
@@ -131,7 +131,7 @@ function ceiling(L) {
   const right = alongX(vp, { x: wall.x1, y: wall.top }, canvas.x + canvas.w);
   let out = poly(
     [{ x: wall.x0, y: wall.top }, { x: wall.x1, y: wall.top }, right, { x: right.x, y: canvas.y }, { x: left.x, y: canvas.y }, left],
-    `fill="#24140a"`,
+    `fill="#3a1d0c"`,
   );
   // carlings running towards us
   for (let i = 0; i <= 8; i++) {
@@ -383,7 +383,7 @@ function table(L, layout) {
   const n = 7;
   const a = 1 / (tb.front - vp.y);
   const b = 1 / (tb.back - vp.y);
-  const colours = ["#6e3f1c", "#653a1a", "#74431e", "#5f3618", "#6a3d1b", "#71411d", "#623819"];
+  const colours = ["#8a4a20", "#7e431d", "#92502a", "#783f1b", "#864822", "#8e4d24", "#7a411c"];
   for (let i = 0; i < n; i++) {
     const y0 = vp.y + 1 / (b + ((a - b) * i) / n);
     const y1 = vp.y + 1 / (b + ((a - b) * (i + 1)) / n);
@@ -436,6 +436,73 @@ function lightPools(L, layout) {
     </g>`;
 }
 
+// A sea chart pinned to the right wall, with a compass rose.
+function wallMap(L) {
+  const P = (t, h, o = 0) => wallPoint(L, "right", t, h, o);
+  const tall = L === LAYOUTS.tall;
+  const [t0, t1] = tall ? [1.08, 1.3] : [1.1, 1.45];
+  const [h0, h1] = tall ? [130, 330] : [70, 280];
+  const quad = [P(t0, h0, 3), P(t1, h0, 3), P(t1, h1, 3), P(t0, h1, 3)];
+  const c = P((t0 + t1) / 2, (h0 + h1) / 2, 3);
+  const s = (t0 + t1) / 2;
+  return `
+    <g>
+      ${poly(quad.map((q) => ({ x: q.x - 6, y: q.y + 8 })), 'fill="#000" opacity=".35" filter="url(#blur6)"')}
+      ${poly(quad, 'fill="#e6cf9c" stroke="#7a5a32" stroke-width="2"')}
+      ${poly(quad, 'fill="url(#warm-light)"')}
+      <g transform="translate(${r(c.x)} ${r(c.y)}) scale(${r(-0.55 * s)} ${r(1.1 * s)})" opacity=".75">
+        <circle r="34" fill="none" stroke="#6e5332" stroke-width="2"/>
+        <path d="M0 -44 L7 0 L0 44 L-7 0 Z M-44 0 L0 -7 L44 0 L0 7 Z" fill="#6e5332"/>
+        <path d="M0 -44 L7 0 L-7 0 Z" fill="#a3281c"/>
+        <path d="M-60 -50 C-40 -30 -50 -10 -30 0 M30 30 C46 40 52 52 70 50" stroke="#6e5332" stroke-width="1.6" fill="none"/>
+      </g>
+      ${[quad[0], quad[1]].map((q) => `<circle cx="${r(q.x)}" cy="${r(q.y + 6)}" r="3.5" fill="#c89640"/>`).join("")}
+    </g>`;
+}
+
+// A brass globe on its stand, at the left end of the table.
+function globe(L) {
+  const tall = L === LAYOUTS.tall;
+  const x = tall ? 70 : 200;
+  const y = tall ? 650 : 470;
+  const s = tall ? 0.8 : 1;
+  const R = 54 * s;
+  return `
+    <g>
+      <ellipse cx="${x}" cy="${y + 4}" rx="${r(60 * s)}" ry="${r(12 * s)}" fill="#000" opacity=".5" filter="url(#blur6)"/>
+      <path d="M${r(x - 36 * s)} ${y} Q${x} ${r(y - 20 * s)} ${r(x + 36 * s)} ${y} Z" fill="#6e4322"/>
+      <path d="M${x} ${r(y - 12 * s)} V${r(y - 40 * s)}" stroke="#c89640" stroke-width="${r(7 * s)}"/>
+      <circle cx="${x}" cy="${r(y - 40 * s - R)}" r="${r(R)}" fill="url(#globe-sea)" stroke="#5e4422" stroke-width="2"/>
+      <path d="M${r(x - R * 0.6)} ${r(y - 40 * s - R * 1.3)} c${r(18 * s)} ${r(-6 * s)} ${r(30 * s)} ${r(10 * s)} ${r(22 * s)} ${r(26 * s)} c${r(-8 * s)} ${r(14 * s)} ${r(10 * s)} ${r(22 * s)} ${r(26 * s)} ${r(16 * s)} M${r(x + R * 0.2)} ${r(y - 40 * s - R * 0.4)} c${r(10 * s)} ${r(8 * s)} ${r(26 * s)} ${r(4 * s)} ${r(30 * s)} ${r(16 * s)}" fill="none" stroke="#6b5a32" stroke-width="${r(5 * s)}" opacity=".7"/>
+      <path d="M${r(x - R - 8 * s)} ${r(y - 40 * s - R)} A${r(R + 8 * s)} ${r(R + 8 * s)} 0 0 1 ${r(x + R + 8 * s)} ${r(y - 40 * s - R)}" fill="none" stroke="#c89640" stroke-width="${r(5 * s)}"/>
+      <circle cx="${r(x - R * 0.35)}" cy="${r(y - 40 * s - R * 1.4)}" r="${r(R * 0.22)}" fill="#fff" opacity=".25"/>
+    </g>`;
+}
+
+// Barrels and a coil of rope in the near corners, beside the table.
+function cornerBarrels(L) {
+  const tall = L === LAYOUTS.tall;
+  const items = tall
+    ? [{ x: -30, y: 1580, s: 1.6 }]
+    : [
+        { x: -30, y: 900, s: 1.7 },
+        { x: 1640, y: 900, s: 1.7 },
+      ];
+  return items
+    .map(({ x, y, s }) => {
+      const coil = Array.from({ length: 4 }, (_, i) => `<ellipse cx="${r(x + 70 * s)}" cy="${r(y - 22 * s + i * 4 * s)}" rx="${r((46 - i * 3) * s)}" ry="${r((14 - i) * s)}" fill="none" stroke="${i % 2 ? "#a88a55" : "#c8a96b"}" stroke-width="${r(8 * s)}"/>`).join("");
+      return `
+      <g>
+        <ellipse cx="${x}" cy="${y}" rx="${r(80 * s)}" ry="${r(14 * s)}" fill="#000" opacity=".55" filter="url(#blur6)"/>
+        <path d="M${r(x - 62 * s)} ${y}Q${r(x - 74 * s)} ${r(y - 80 * s)} ${r(x - 60 * s)} ${r(y - 160 * s)}H${r(x + 60 * s)}Q${r(x + 74 * s)} ${r(y - 80 * s)} ${r(x + 62 * s)} ${y}Z" fill="url(#barrel)"/>
+        <ellipse cx="${x}" cy="${r(y - 160 * s)}" rx="${r(60 * s)}" ry="${r(13 * s)}" fill="#7a4a24" stroke="#2b1708" stroke-width="3"/>
+        ${[0.12, 0.42, 0.66, 0.9].map((f) => `<path d="M${r(x - 68 * s)} ${r(y - 160 * s * f)}Q${x} ${r(y - 160 * s * f + 12 * s)} ${r(x + 68 * s)} ${r(y - 160 * s * f)}" fill="none" stroke="#4a4a44" stroke-width="${r(7 * s)}"/>`).join("")}
+        ${coil}
+      </g>`;
+    })
+    .join("");
+}
+
 const sceneCache = new Map();
 
 // The whole room as one SVG picture (for an <img>): everything that does not move.
@@ -460,12 +527,15 @@ export function sceneSvg(layout) {
     <linearGradient id="leather" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a2318"/><stop offset=".6" stop-color="#5e140e"/><stop offset="1" stop-color="#3a0b07"/></linearGradient>
     <linearGradient id="table-light" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb8e0" stop-opacity=".16"/><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient>
     <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2913"/><stop offset=".2" stop-color="#3a200e"/><stop offset="1" stop-color="#1a0d05"/></linearGradient>
-    <linearGradient id="wall-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset=".45" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient>
+    <linearGradient id="wall-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
     <linearGradient id="side-shade-left" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
     <linearGradient id="side-shade-right" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
-    <radialGradient id="lamp-wall" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb357" stop-opacity=".34"/><stop offset="1" stop-color="#ffb357" stop-opacity="0"/></radialGradient>
+    <radialGradient id="lamp-wall" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb357" stop-opacity=".55"/><stop offset="1" stop-color="#ffb357" stop-opacity="0"/></radialGradient>
     <radialGradient id="window-bounce" cx=".5" cy=".6" r=".6"><stop offset="0" stop-color="#8ec0ff" stop-opacity=".16"/><stop offset="1" stop-color="#8ec0ff" stop-opacity="0"/></radialGradient>
-    <radialGradient id="vignette" cx=".5" cy=".42" r=".72"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
+    <radialGradient id="vignette" cx=".5" cy=".42" r=".72"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>
+    <radialGradient id="warm-light" cx=".5" cy=".35" r=".6"><stop offset="0" stop-color="#ffb062" stop-opacity=".28"/><stop offset=".6" stop-color="#ff9a40" stop-opacity=".1"/><stop offset="1" stop-color="#ff9a40" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sunset-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffc27a" stop-opacity=".45"/><stop offset="1" stop-color="#ffc27a" stop-opacity="0"/></radialGradient>
+    <radialGradient id="globe-sea" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#d8c79a"/><stop offset=".7" stop-color="#a88a52"/><stop offset="1" stop-color="#5e4422"/></radialGradient>
     <linearGradient id="board" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b3f1d"/><stop offset="1" stop-color="#3e2210"/></linearGradient>
     <clipPath id="clip-wall"><rect x="${L.wall.x0}" y="${L.wall.top}" width="${L.wall.x1 - L.wall.x0}" height="${L.wall.bottom - L.wall.top}"/></clipPath>
     <clipPath id="clip-left"><polygon points="${pts(left.outline)}"/></clipPath>
@@ -494,13 +564,18 @@ export function sceneSvg(layout) {
     ${L.lanterns.map((l) => `<ellipse cx="${l.x}" cy="${l.y + l.drop + 40}" rx="230" ry="200" fill="url(#lamp-wall)"/>`).join("")}
   </g>
   ${win.glass}
+  <ellipse cx="${(L.windows.x0 + L.windows.x1) / 2}" cy="${L.windows.y1}" rx="${(L.windows.x1 - L.windows.x0) * 0.8}" ry="260" fill="url(#sunset-glow)" style="mix-blend-mode:screen"/>
   ${sill(L)}
   ${bookshelf(L, rand)}
   ${rightWallThings(L)}
+  ${wallMap(L)}
   ${floorThings(L)}
   ${chair(L)}
   ${table(L, layout)}
+  ${globe(L)}
   ${lightPools(L, layout)}
+  ${cornerBarrels(L)}
+  <rect x="${canvas.x}" y="${canvas.y}" width="${canvas.w}" height="${canvas.h}" fill="url(#warm-light)" style="mix-blend-mode:screen"/>
   <rect x="${canvas.x}" y="${canvas.y}" width="${canvas.w}" height="${canvas.h}" fill="url(#vignette)"/>
 </svg>`;
   sceneCache.set(layout, svg);
@@ -539,12 +614,14 @@ export const SEA = `
 // A round wooden base with a painted top; `paint` is drawn clipped to it.
 function base(id, paint) {
   return `
+    <g class="base">
     <ellipse cx="100" cy="158" rx="92" ry="18" fill="#000" opacity=".55" filter="url(#${id}-blur)"/>
     <path d="M10 140 V150 A90 19 0 0 0 190 150 V140 Z" fill="url(#${id}-rim)"/>
     <ellipse cx="100" cy="140" rx="90" ry="19" fill="#5b3418"/>
     <clipPath id="${id}-top"><ellipse cx="100" cy="140" rx="86" ry="17"/></clipPath>
     <g clip-path="url(#${id}-top)">${paint}</g>
-    <ellipse cx="100" cy="140" rx="88" ry="18" fill="none" stroke="#c89640" stroke-width="2"/>`;
+    <ellipse cx="100" cy="140" rx="88" ry="18" fill="none" stroke="#c89640" stroke-width="2"/>
+    </g>`;
 }
 
 function baseDefs(id) {
@@ -840,3 +917,71 @@ export function lanternSvg(drop) {
 </svg>`;
 }
 
+
+// --- small pieces of the interface, in the same hand -----------------------------------------
+
+// Two crossed cutlasses, under the big red buttons.
+export const SWORDS = `<svg class="swords" viewBox="0 0 120 34" aria-hidden="true">
+  <defs><linearGradient id="sw-steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f8"/><stop offset=".5" stop-color="#b7bec6"/><stop offset="1" stop-color="#6f7882"/></linearGradient>
+  ${BRASS("sw-brass", 1, 1)}</defs>
+  <path d="M14 30 C40 22 70 10 104 4 C82 12 52 24 20 33 Z" fill="url(#sw-steel)" stroke="#3a3f44" stroke-width=".8"/>
+  <path d="M106 30 C80 22 50 10 16 4 C38 12 68 24 100 33 Z" fill="url(#sw-steel)" stroke="#3a3f44" stroke-width=".8"/>
+  <path d="M8 27 l10 9 M112 27 l-10 9" stroke="url(#sw-brass)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M4 33 l8 -8 M116 33 l-8 -8" stroke="#3a1a0a" stroke-width="5" stroke-linecap="round"/>
+</svg>`;
+
+// A quill standing in an inkwell.
+export const QUILL = `<svg class="quill" viewBox="0 0 90 110" aria-hidden="true">
+  <defs>${BRASS("qu-brass", 1, 0)}
+    <linearGradient id="qu-feather" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbf3e4"/><stop offset=".6" stop-color="#d9c8a8"/><stop offset="1" stop-color="#8a7656"/></linearGradient>
+    <filter id="qu-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+  <ellipse cx="46" cy="102" rx="30" ry="6" fill="#000" opacity=".45" filter="url(#qu-blur)"/>
+  <path d="M8 6 C30 10 50 30 56 66 L52 68 C40 40 24 22 8 6 Z" fill="url(#qu-feather)" stroke="#6e5a3a" stroke-width="1"/>
+  <path d="M10 8 C28 22 44 42 54 66" stroke="#7a6444" stroke-width="1.2" fill="none"/>
+  <path d="M54 64 L60 86" stroke="#3a2a1a" stroke-width="2.2"/>
+  <path d="M26 80 H66 L70 100 H22 Z" fill="#1f1a22" stroke="#0e0b10" stroke-width="1.5"/>
+  <ellipse cx="46" cy="80" rx="20" ry="5" fill="url(#qu-brass)"/>
+  <ellipse cx="46" cy="79" rx="9" ry="2.6" fill="#0b0810"/>
+  <path d="M30 86 Q34 92 32 98" stroke="#fff" stroke-opacity=".25" stroke-width="2.4" fill="none"/>
+</svg>`;
+
+// A small galleon, for "your fleet".
+export const SHIP_ICON = `<svg class="plaque-icon" viewBox="0 0 64 48" aria-hidden="true">
+  ${"<defs>" + BRASS("si-brass", 1, 1) + "</defs>"}
+  <path d="M4 32 H60 L52 44 H12 Z" fill="url(#si-brass)"/>
+  <path d="M22 32 V6 M38 32 V2 M50 32 V12" stroke="url(#si-brass)" stroke-width="2.2"/>
+  <path d="M12 10 Q22 8 32 10 Q34 19 32 28 Q22 26 12 28 Q10 19 12 10 Z M28 6 Q38 4 48 6 Q50 16 48 28 Q38 26 28 28 Q26 16 28 6 Z M46 14 Q52 13 58 14 Q59 21 58 28 Q52 27 46 28 Q45 21 46 14 Z" fill="url(#si-brass)" opacity=".95"/>
+</svg>`;
+
+// The logbook on the table: a leather book with brass corners and an anchor.
+export const BOOK = `<svg class="book" viewBox="0 0 240 120" preserveAspectRatio="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="bk-cover" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a321c"/><stop offset=".6" stop-color="#4e1c10"/><stop offset="1" stop-color="#2e0f08"/></linearGradient>
+    <linearGradient id="bk-pages" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1e2bf"/><stop offset="1" stop-color="#b89a68"/></linearGradient>
+    ${BRASS("bk-brass", 1, 1)}
+  </defs>
+  <rect x="10" y="12" width="226" height="104" rx="6" fill="url(#bk-pages)"/>
+  <rect x="4" y="4" width="226" height="104" rx="6" fill="url(#bk-cover)" stroke="#1a0603" stroke-width="2"/>
+  <rect x="14" y="13" width="206" height="86" rx="4" fill="none" stroke="#d6aa4e" stroke-opacity=".55" stroke-width="1.5"/>
+  <path d="M4 22 V4 H22 Z M230 22 V4 H212 Z M4 90 V108 H22 Z M230 90 V108 H212 Z" fill="url(#bk-brass)"/>
+</svg>`;
+
+// The brass stand the parrot keeps during the battle.
+export const STAND = `<svg class="stand" viewBox="0 0 160 120" aria-hidden="true">
+  <defs>${BRASS("st-brass", 1, 0)}${BRASS("st-brass-v", 0, 1)}</defs>
+  <ellipse cx="80" cy="112" rx="48" ry="7" fill="#000" opacity=".35"/>
+  <rect x="8" y="2" width="144" height="12" rx="6" fill="url(#st-brass-v)" stroke="#5a3a0a" stroke-width="1"/>
+  <path d="M74 10 H86 L90 96 H70 Z" fill="url(#st-brass)"/>
+  <rect x="64" y="40" width="32" height="8" rx="4" fill="url(#st-brass-v)"/>
+  <path d="M42 112 Q80 86 118 112 Z" fill="url(#st-brass)"/>
+</svg>`;
+
+// The painted sea under each battle card (the miniatures stand on it, without their base).
+export const CARD_SEA = `<svg class="card-sea" viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true">
+  <defs><linearGradient id="cs-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d7aa3"/><stop offset="1" stop-color="#0c2a46"/></linearGradient></defs>
+  <rect width="300" height="80" fill="url(#cs-water)"/>
+  <path d="M0 14 q15 -6 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 V80 H0 Z" fill="#2a6488" opacity=".7"/>
+  <path d="M0 34 q20 -7 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 V80 H0 Z" fill="#174a70" opacity=".8"/>
+  <g stroke="#e8f4ff" stroke-width="1.6" fill="none" opacity=".6"><path d="M30 22 q6 -3 12 0 M120 18 q6 -3 12 0 M210 26 q6 -3 12 0 M70 44 q6 -3 12 0 M250 46 q6 -3 12 0"/></g>
+  <path d="M130 6 h40 M138 12 h24" stroke="#ffd994" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
+</svg>`;

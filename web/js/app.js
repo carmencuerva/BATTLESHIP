@@ -3,7 +3,7 @@
 
 import { startArena } from "../pyodide-bootstrap.js";
 import { cellRect, coord, lockBoard, renderBoard, UNKNOWN } from "./board.js";
-import { COMPASS, DIVIDERS, LOGBOOK, MINIATURES, MODELS, SEA, SPYGLASS, lanternSvg, sceneSvg } from "./cabin-art.js";
+import { BOOK, CARD_SEA, COMPASS, DIVIDERS, MINIATURES, MODELS, QUILL, SEA, SHIP_ICON, SPYGLASS, STAND, SWORDS, lanternSvg, sceneSvg } from "./cabin-art.js";
 import {
   addShip,
   changeLength,
@@ -73,6 +73,8 @@ function show(render) {
   current = render;
   keyHandler = null;
   document.body.classList.toggle("in-cabin", render === menuScreen); // the cabin fills the screen
+  const section = { [tournamentScreen.name]: "nav-tournament", [rankingScreen.name]: "nav-ranking", [aboutScreen.name]: "nav-about" }[render.name] ?? "nav-play";
+  for (const id of Object.keys(NAV)) document.getElementById(id).classList.toggle("current", id === section);
   // the shanty everywhere except during a battle and at its end (see gameScreen, finishGame)
   if (!match || match.attacker == null) setMusic("shanty");
   render();
@@ -92,7 +94,9 @@ const NAV = {
 
 function renderHeader() {
   for (const [id, [key]] of Object.entries(NAV)) document.getElementById(id).textContent = t(key);
-  document.getElementById("lang").textContent = getLang() === "es" ? "EN" : "ES";
+  const lang = document.getElementById("lang");
+  lang.textContent = `${getLang().toUpperCase()} ▾`;
+  lang.title = getLang() === "es" ? "English" : "Español";
   const sound = document.getElementById("sound");
   sound.innerHTML = isMuted() ? SPEAKER_OFF : SPEAKER_ON;
   sound.title = t(isMuted() ? "sound_on" : "sound_off");
@@ -200,6 +204,7 @@ for (const [id, [, screenFn]] of Object.entries(NAV)) {
 
 const WINDS = ["slow", "normal", "fast"];
 // The shots counter's icon: a cannonball.
+const LOG_BOOK = `<svg class="log-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c3-1 6-1 9 1v14c-3-2-6-2-9-1z M21 5c-3-1-6-1-9 1v14c3-2 6-2 9-1z" fill="#f1e2bf" stroke="#6b4520" stroke-width="1.4"/></svg>`;
 const CANNONBALL = `<svg class="ball-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#2b2b2e"/><circle cx="7.2" cy="7" r="2.6" fill="#8a8f96" opacity=".7"/></svg>`;
 const cabin = { panel: null, trigger: null, layout: null };
 const sceneUrls = {};
@@ -418,6 +423,10 @@ function sceneHtml(layout) {
 
 const MODE_ART = { hvb: "card-sunset", bvb: "card-storm", hvh: "card-dawn" };
 
+// A carved scroll flourish either side of a title, and a small anchor.
+const FLOURISH = `<svg class="flourish" viewBox="0 0 60 16" aria-hidden="true"><path d="M2 8 C12 2 18 14 28 8 S44 2 58 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="2.5" cy="8" r="2" fill="currentColor"/></svg>`;
+const ANCHOR = `<svg class="anchor-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v15M7 9h10M4 13c0 4 4 7 8 7s8-3 8-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="4" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+
 function modeCards() {
   return ["hvb", "bvb", "hvh"]
     .map((m) => {
@@ -425,6 +434,7 @@ function modeCards() {
       return `
         <label class="mode-card ${MODE_ART[m]}${chosen ? " chosen" : ""}">
           <input type="radio" name="mode" value="${m}"${chosen ? " checked" : ""} aria-describedby="mode-desc-${m}">
+          <span class="card-sea">${CARD_SEA}</span>
           <span class="card-art">${MINIATURES[m]}</span>
           <span class="card-name">${th(`mode_${m}`)}</span>
           <span class="card-sub" id="mode-desc-${m}">${th(`card_${m}`)}</span>
@@ -434,15 +444,15 @@ function modeCards() {
 }
 
 // One setting: its object, its name and a big stepper. `value` is HTML.
-function stepper(key, { art, label, value, less, more, canLess = true, canMore = true, extra = "" }) {
+function stepper(key, { art, label, value, less, more, canLess = true, canMore = true, extra = "", hint = "" }) {
   return `
     <div class="setting" data-setting="${key}">
       <span class="setting-art" aria-hidden="true">${art}</span>
       <span class="setting-label" id="label-${key}">${label}</span>
       <div class="stepper" role="group" aria-labelledby="label-${key}">
-        <button type="button" data-step="-1" aria-label="${less}"${canLess ? "" : " disabled"}>${key === "fleet" ? "−" : "◀"}</button>
-        <output aria-live="polite">${value}</output>
-        <button type="button" data-step="1" aria-label="${more}"${canMore ? "" : " disabled"}>${key === "fleet" ? "+" : "▶"}</button>
+        <button type="button" class="${key === "fleet" ? "pm" : "arrow"}" data-step="-1" aria-label="${less}"${canLess ? "" : " disabled"}>${key === "fleet" ? "−" : "◀"}</button>
+        <output aria-live="polite"${hint ? ` title="${hint}"` : ""}>${value}</output>
+        <button type="button" class="${key === "fleet" ? "pm" : "arrow"}" data-step="1" aria-label="${more}"${canMore ? "" : " disabled"}>${key === "fleet" ? "+" : "▶"}</button>
       </div>
       ${extra}
     </div>`;
@@ -459,7 +469,7 @@ function captainStepper(key, label, name) {
     more: t("captain_next"),
     canLess: i > 0,
     canMore: i < players.length - 1,
-    extra: `<span class="setting-note">${esc(playerByName(name)?.description ?? "")}</span>`,
+    hint: esc(playerByName(name)?.description ?? ""),
   });
 }
 
@@ -493,10 +503,10 @@ function settingsHtml() {
       more: t("wind_more"),
       canLess: wind > 0,
       canMore: wind < WINDS.length - 1,
-      extra: `<span class="setting-note">${th("wind_help")}</span>`,
+      hint: th("wind_help"),
     }),
   ];
-  if (settings.mode === "hvb") groups.push(captainStepper("opponent", th("opponent"), settings.opponent));
+  if (settings.mode === "hvb") groups.push(captainStepper("opponent", th("difficulty"), settings.opponent));
   if (settings.mode === "bvb") {
     groups.push(captainStepper("botA", th("bot_a"), settings.botA));
     groups.push(captainStepper("botB", th("bot_b"), settings.botB));
@@ -505,37 +515,33 @@ function settingsHtml() {
 }
 
 function crewHtml() {
-  if (settings.mode === "hvb") return nameField("me", "ask_name", settings.nameMe);
+  if (settings.mode === "hvb") return nameField("me", "your_name", settings.nameMe);
   if (settings.mode === "hvh") return nameField("a", "ask_name_a", settings.nameA) + nameField("b", "ask_name_b", settings.nameB);
   return `<p class="crew-watch">${th("poster_watch")}</p>`;
 }
 
 function drawVoyageBoard() {
-  const board = app.querySelector(".voyage-board");
-  board.dataset.mode = settings.mode;
-  board.innerHTML = `
-    <h2 class="board-plaque" id="cabin-title">${th("menu_title")}</h2>
-    <p class="board-sub">${th("menu_sub")}</p>
-    <section class="board-part">
-      <h3 class="board-step"><span aria-hidden="true">1</span>${th("step_battle")}</h3>
+  const voyage = app.querySelector(".voyage");
+  voyage.dataset.mode = settings.mode;
+  voyage.innerHTML = `
+    <h2 class="sign" id="cabin-title">${FLOURISH}<span>${th("menu_title")}</span>${FLOURISH}</h2>
+    <div class="voyage-board sheet">
+      <h3 class="board-step">${FLOURISH}<span>1. ${th("step_battle")}</span>${FLOURISH}</h3>
       <div class="mode-cards" role="radiogroup" aria-label="${th("mode")}">${modeCards()}</div>
-    </section>
-    <section class="board-part">
-      <h3 class="board-step"><span aria-hidden="true">2</span>${th("step_voyage")}</h3>
-      <div class="settings">${settingsHtml()}</div>
-    </section>
-    <div class="board-bottom">
-      <div class="crew">${crewHtml()}</div>
+      <div class="settings" role="group" aria-label="${th("step_voyage")}">${settingsHtml()}</div>
+    </div>
+    <div class="voyage-strip">
+      <div class="crew"><span class="crew-quill" aria-hidden="true">${QUILL}</span><div class="crew-names">${crewHtml()}</div></div>
       <div class="launch">
         <p id="menu-error" class="menu-error" role="alert"></p>
-        <button id="start" class="start">${th("start")}</button>
+        <button id="start" class="red-button start"><span>${th("start")}</span>${SWORDS}</button>
       </div>
       <button type="button" class="logbook-button" data-panel="code" aria-expanded="false">
-        <span class="logbook-art" aria-hidden="true">${LOGBOOK}</span>
-        <span class="logbook-text"><b>${th("prop_logbook")}</b><small>${th("code_title")}</small></span>
+        ${BOOK}
+        <span class="logbook-text"><b>${ANCHOR} ${th("logbook_short")}</b><small>${th("code_title")}</small></span>
       </button>
     </div>`;
-  wireVoyageBoard(board);
+  wireVoyageBoard(voyage);
 }
 
 // Changes a setting from its stepper: -1 or +1.
@@ -611,7 +617,7 @@ function menuScreen() {
   app.innerHTML = `
     <section class="cabin" aria-labelledby="cabin-title">
       <div class="cabin-scene"></div>
-      <div class="voyage-board"></div>
+      <div class="voyage"></div>
       <div id="cabin-panel" class="cabin-panel" role="dialog" hidden></div>
     </section>`;
   drawVoyageBoard();
@@ -668,7 +674,7 @@ async function loadRanking() {
     ranking = { status: "missing" };
   }
   if (current === rankingScreen) rankingScreen();
-  if (current === menuScreen && !cabin.panel && app.querySelector(".voyage-board")) drawVoyageBoard(); // the danger marks
+  if (current === menuScreen && !cabin.panel && app.querySelector(".voyage")) drawVoyageBoard(); // the danger marks
 }
 
 // --- tournament in the browser ---------------------------------------------------------
@@ -1099,7 +1105,6 @@ function placementScreen(i) {
     const last = n === TUTOR_STEPS.length;
     return `
       <div class="tutor" role="region" aria-label="${th("tutor_help")}">
-        <div class="tutor-parrot" aria-hidden="true">${PARROT_SVG}</div>
         <div class="tutor-bubble">
           <p class="tutor-step">${th("tutor_step", { n, total: TUTOR_STEPS.length })}</p>
           <p class="tutor-text" aria-live="polite">${th(`tutor_${n}`)}</p>
@@ -1107,6 +1112,17 @@ function placementScreen(i) {
             ${last ? `<button id="tutor-next" class="primary">${th("tutor_done")}</button>` : `<button id="tutor-next" class="primary">${th("tutor_next")}</button><button id="tutor-skip">${th("tutor_skip")}</button>`}
           </div>
         </div>
+        <div class="tutor-parrot" aria-hidden="true">${PARROT_SVG}</div>
+      </div>`;
+  }
+
+  // The boatswain's three short orders (with a "?" to bring the parrot's tutorial back).
+  function ordersHtml() {
+    return `
+      <div class="orders-how">
+        <h3 class="ornate">${FLOURISH}<span>${th("orders_title")}</span>${FLOURISH}
+          <button id="tutor-help" class="tutor-help" title="${th("tutor_help")}" aria-label="${th("tutor_help")}">?</button></h3>
+        <ul class="orders-list">${[1, 2, 3].map((n) => `<li>${th(`orders_${n}`)}</li>`).join("")}</ul>
       </div>`;
   }
 
@@ -1143,24 +1159,27 @@ function placementScreen(i) {
         const placed = Boolean(ed.placement[k]);
         const classes = ["ship-pick", placed ? "placed" : "", ed.selected === k ? "selected" : ""];
         const afloat = placed ? `<small>✓ ${th("in_water")}</small>` : "";
-        return `<button class="${classes.join(" ")}" data-k="${k}">${miniShip(length)}<span>${length}</span>${afloat}</button>`;
+        return `<button class="${classes.join(" ")}" data-k="${k}">${miniShip(length)}<span class="ship-len">${length}</span>${afloat}</button>`;
       })
       .join("");
     app.innerHTML = `
-      <section class="panel placement">
-        <div class="place-head">
-          <h2>${th("place_title", { name: side.name })}</h2>
-          ${ed.tutor === null ? `<button id="tutor-help" class="tutor-help" title="${th("tutor_help")}" aria-label="${th("tutor_help")}">?</button>` : ""}
-        </div>
-        ${tutorHtml()}
-        <div class="place-layout">
-          <div class="board-frame"><div id="place-board"></div></div>
-          <aside class="scroll orders">
-            <div class="scroll-roll top"></div>
+      <section class="placement">
+        <h2 class="sign">${FLOURISH}<span>${th("place_title", { name: side.name })}</span>${FLOURISH}</h2>
+        <div class="place-layout sheet">
+          <div class="place-board-col">
+            <div class="board-frame"><div id="place-board"></div></div>
+            <div class="place-foot">
+              <span class="place-quill" aria-hidden="true">${QUILL}</span>
+              <p class="place-count plaque-light">${th("place_count", { n: ed.placement.filter(Boolean).length, total: fleet.length })}</p>
+              <span class="place-compass" aria-hidden="true">${COMPASS}</span>
+            </div>
+          </div>
+          <aside class="orders">
             <div class="scroll-body">
               <p id="place-note" class="note" role="status" aria-live="polite"></p>
+              ${ed.tutor === null ? ordersHtml() : tutorHtml()}
               <div class="orders-hold">
-                <h4>${th("hold_title")}</h4>
+                <h4 class="ornate">${FLOURISH}<span>${th("hold_title")}</span>${FLOURISH}</h4>
                 <div class="ship-list">${ships}</div>
                 <p class="orient">${th(ed.orient === "H" ? "horizontal" : "vertical")}</p>
                 <div class="buttons">
@@ -1168,10 +1187,9 @@ function placementScreen(i) {
                   <button id="random">${th("random")}</button>
                   <button id="clear">${th("clear")}</button>
                 </div>
-                <button id="ready" class="primary board-button">${th("ready")}</button>
+                <button id="ready" class="red-button ready"><span>${th("ready")}</span>${SWORDS}</button>
               </div>
             </div>
-            <div class="scroll-roll bottom"></div>
           </aside>
         </div>
       </section>`;
@@ -1520,23 +1538,25 @@ function ensureLayout() {
     </div>`;
   app.innerHTML = `
     <section class="game">
-      <div class="arena">
-        ${panel("left")}
-        <div class="commentator" id="parrot-dock"></div>
-        ${panel("right")}
+      <div class="game-sheet sheet">
+        <div class="arena">
+          ${panel("left")}
+          <div class="commentator-col"><div class="commentator" id="parrot-dock"></div>${STAND}</div>
+          ${panel("right")}
+        </div>
+        <div class="game-side" id="game-side"></div>
       </div>
-      <div class="game-side" id="game-side"></div>
+      <div class="edge-decor" aria-hidden="true"><span class="decor-compass">${COMPASS}</span><span class="decor-spyglass">${SPYGLASS}</span></div>
     </section>`;
   // The parrot sits still on its perch between the boards (see parrot.js).
   layout = { key, root: app.querySelector(".game"), parrot: createParrot(app.querySelector("#parrot-dock")), active: null, logOpen: false };
   return true;
 }
 
-function plateHtml(side, caption, active) {
+function plateHtml(side, caption, active, icon, sub) {
   return `
     <img class="hat" src="img/hat.webp" alt="" draggable="false">
-    <span class="pname">${esc(side.name)}</span>
-    <span class="caption">${caption}</span>
+    <span class="plaque">${icon}<span class="plaque-text"><b>${caption}</b>${sub ? `<small>${sub}</small>` : ""}</span></span>
     ${active ? `<span class="sr-only">${th("turn_of", { name: side.name })}</span>` : ""}`;
 }
 
@@ -1584,8 +1604,13 @@ function gameScreen() {
   const previous = layout.active;
   const fromRect = previous != null && previous !== active ? plates[previous].querySelector(".hat")?.getBoundingClientRect() : null;
   for (const side of [left, right]) {
-    const caption = me != null ? th(side === me ? "your_fleet" : "enemy_waters") : th("fleet_short");
-    plates[side].innerHTML = plateHtml(sides[side], caption, side === active);
+    const mine = me != null && side === me;
+    const caption = me != null ? th(mine ? "your_fleet" : "enemy_waters") : esc(sides[side].name);
+    const icon = mine || me == null ? SHIP_ICON : `<span class="plaque-icon">${LOGO}</span>`;
+    let sub = esc(sides[side].name);
+    if (me == null) sub = th("fleet_short");
+    else if (!mine && sides[side].kind === "bot") sub = th("captain_is", { name: sides[side].name });
+    plates[side].innerHTML = plateHtml(sides[side], caption, side === active, icon, sub);
     plates[side].classList.toggle("active", side === active);
   }
   if (fromRect && active != null) flyHat(fromRect, plates[active].querySelector(".hat"));
@@ -1639,7 +1664,7 @@ function gameScreen() {
       continue;
     }
     const theme = side === left ? "light" : "dark";
-    box.innerHTML = `<span class="afloat-label">${th("afloat")}</span>
+    box.innerHTML = `<span class="afloat-label">${th("afloat")}: ${status[side].view.remaining.length}</span>
       <span class="afloat-ships">${status[side].view.remaining.map((n) => miniShip(n, theme)).join("")}</span>
       <span class="shots-count" title="${th("shots")}">${CANNONBALL} ${match.shots[1 - side]}</span>`;
   }
@@ -1663,11 +1688,11 @@ function gameScreen() {
           ? `<button id="celebrate">${th("end_replay")}</button>
              <button id="again" class="primary">${th("play_again")}</button>
              <button id="menu">${th("back_menu")}</button>`
-          : `<button id="abandon">${th("abandon")}</button>`
+          : `<button id="abandon" class="red-button small">${th("abandon")}</button>`
       }
     </div>
     ${match.xray && hasBot ? `<p class="help">${xrayNames.length ? th("xray_help", { names: xrayNames.join(", ") }) : th("xray_none")}</p>` : ""}
-    <details class="log"${layout.logOpen ? " open" : ""}><summary>${th("log_title")}</summary><ol>${log}</ol></details>`;
+    <details class="log"${layout.logOpen ? " open" : ""}><summary><span class="log-title">${LOG_BOOK} ${th("log_title")}</span><span class="log-last">${match.log.length ? th(match.log.at(-1).key, match.log.at(-1).vars) : ""}</span></summary><ol>${log}</ol></details>`;
 
   sidePanel.querySelector("#hints").addEventListener("change", (event) => {
     match.hints = event.target.checked;

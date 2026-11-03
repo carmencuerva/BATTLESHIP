@@ -13,13 +13,13 @@ export const SUNK = 3;
 // "C7"-style names (see coords.js), used by the messages and the ship's log.
 export const coord = toCoord;
 
-// Shot marks. Water: rings on the sea. Hit: a painted red X. A sunk ship's cells keep a
+// Shot marks. Water: a white peg on the sea. Hit: a painted red X. A sunk ship's cells keep a
 // dark, burnt X (and the wreck shows underneath), so the three never look alike.
 const WATER = `
   <svg class="mark water" viewBox="0 0 40 40" aria-hidden="true">
-    <circle cx="20" cy="20" r="15" class="ring r1"/>
-    <circle cx="20" cy="20" r="9" class="ring r2"/>
-    <circle cx="20" cy="20" r="3.6" class="drop"/>
+    <circle cx="20" cy="22" r="8" class="shadow"/>
+    <circle cx="20" cy="20" r="7.5" class="pearl"/>
+    <circle cx="17.5" cy="17.5" r="2.4" class="shine"/>
   </svg>`;
 
 const CROSS = (kind) => `

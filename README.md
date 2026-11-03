@@ -75,7 +75,7 @@ Submitted bots (`players/custom/`):
 
 ## Credits
 
-- Fonts: [Pirata One](https://fonts.google.com/specimen/Pirata+One), [Bangers](https://fonts.google.com/specimen/Bangers) and [Nunito](https://fonts.google.com/specimen/Nunito), all under the [SIL Open Font License 1.1](https://openfontlicense.org), served by Google Fonts.
+- Fonts: [Cinzel](https://fonts.google.com/specimen/Cinzel) and [EB Garamond](https://fonts.google.com/specimen/EB+Garamond), both under the [SIL Open Font License 1.1](https://openfontlicense.org), served by Google Fonts.
 - Ships, parrot, the captain's cabin (room, windows, lanterns, chart, miniatures and every object on the table), effects and every sound are drawn or synthesised by this project's own code (SVG, CSS, Web Audio).
 - The background music is an original tune composed for this project and synthesised live (`web/js/music.js`).
 - The parrot's voice is your browser's own speech synthesis (`speechSynthesis`), using the voices installed on your device; no recordings are shipped.
