@@ -11,11 +11,14 @@ the same code plays the official tournament in CI and runs in your browser via
 - **Your pirate name**: the page asks for it and the parrot calls you by it (deckhand until
   you sink your first ship, captain after that). It is stored only in your own browser
   (`localStorage`); nothing is sent anywhere.
-- **The captain's cabin**: you set up each game inside the captain's cabin. The three
-  miniatures on the chart choose the mode, and the objects on the table hold the rest:
-  the wanted poster (your name), the spyglass (the enemy captain), the ship models (the
-  fleet), the dividers (the size of the sea), the compass (the wind) and the logbook (the
-  pirate code). Everything in it is drawn by the page's own code (`web/js/cabin-art.js`).
+- **The captain's cabin**: every screen happens inside the captain's cabin. On the
+  start screen a parchment board on the table holds the choices in groups: the battle
+  (three illustrated cards), the voyage (fleet, size of the sea, wind and enemy captain,
+  each with big controls), your name, the big *All hands, attack!* button and the logbook
+  (the pirate code). Boards and controls are always seen straight on. Everything is drawn
+  by the page's own code (`web/js/cabin-art.js`).
+- **Placing your fleet**: the first time, the parrot walks you through it one step at a
+  time (a **?** button brings the tutorial back).
 - **The parrot** sits still on its perch between the two boards, so it never covers them.
   It speaks only at a few moments: when your turn starts, when you sink an enemy ship
   (telling you how many are left), when the enemy sinks one of yours (saying it was from

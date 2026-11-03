@@ -11,11 +11,14 @@ navegador gracias a [Pyodide](https://pyodide.org).
 - **Tu nombre pirata**: la web te lo pide y el loro te llama por él (grumete hasta que
   hundes tu primer barco, y capitán o capitana después, como elijas). Se guarda solo en tu
   navegador (`localStorage`); no se envía a ningún sitio.
-- **El camarote del capitán**: cada partida se prepara dentro del camarote. Las tres
-  miniaturas de la carta eligen el modo y los objetos de la mesa guardan el resto: el
-  cartel de «Se busca» (tu nombre), el catalejo (el capitán enemigo), las maquetas (la
-  flota), el compás (el tamaño del mar), la brújula (el viento) y el cuaderno de bitácora
-  (el código del pirata). Todo lo dibuja el propio código de la web (`web/js/cabin-art.js`).
+- **El camarote del capitán**: todas las pantallas transcurren dentro del camarote. En la
+  de inicio, un pergamino sobre la mesa reúne las opciones por grupos: la batalla (tres
+  tarjetas ilustradas), la travesía (flota, tamaño del mar, viento y capitán enemigo, con
+  controles grandes), tu nombre, el gran botón *¡Al abordaje!* y la bitácora (el código del
+  pirata). Los tableros y controles se ven siempre de frente. Todo lo dibuja el propio
+  código de la web (`web/js/cabin-art.js`).
+- **Colocar la flota**: la primera vez, el loro te guía paso a paso (el botón **?** vuelve
+  a abrir el tutorial).
 - **El loro** está quieto en su percha entre los dos tableros, así que nunca los tapa.
   Habla solo en momentos concretos: cuando empieza tu turno, cuando hundes un barco enemigo
   (te dice cuántos quedan), cuando el enemigo hunde uno de los tuyos (dejando claro que es

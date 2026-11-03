@@ -1,9 +1,9 @@
 // The captain's cabin artwork, all drawn by this code (SVG): the room itself (walls, beams,
-// stern windows, bookshelf, chair, table) as one static picture with procedural wood and
-// paper textures; the sea outside; the chart; the three destination miniatures and the
-// props that hold the settings. Geometry comes from cabin.js.
+// stern windows, bookshelf, chair, table) as one static picture with procedural wood
+// textures; the sea outside; the lanterns; the three battle miniatures and the objects
+// that stand for each setting. Geometry comes from cabin.js.
 
-import { CHART, chartQuad, DESTINATIONS, HOME, LAYOUTS, alongX, alongY, depthScale, routePath, tableQuad } from "./cabin.js";
+import { LAYOUTS, alongX, alongY, depthScale, tableQuad } from "./cabin.js";
 
 const r = (n) => Math.round(n * 10) / 10;
 const pts = (list) => list.map((p) => `${r(p.x)},${r(p.y)}`).join(" ");
@@ -374,7 +374,7 @@ function chair(L) {
     </g>`;
 }
 
-// The table: planks in perspective, the chart's shadow, light pools and the front edge.
+// The table: planks in perspective, light pools and the front edge.
 function table(L, layout) {
   const { vp, table: tb } = L;
   const quad = tableQuad(layout);
@@ -392,8 +392,6 @@ function table(L, layout) {
     rows += `<path d="M${r(q[3].x)} ${r(y1)}H${r(q[2].x)}" stroke="#1d0e05" stroke-width="${r(1.2 + 2.2 * depthScale(layout, y1))}"/>`;
     rows += `<path d="M${r(q[0].x)} ${r(y0 + 1.5)}H${r(q[1].x)}" stroke="#e0a868" stroke-opacity=".10" stroke-width="2"/>`;
   }
-  const cq = chartQuad(layout);
-  const shadow = cq.map((p) => ({ x: p.x + 8, y: p.y + 10 }));
   const faceTop = tb.front;
   const faceBottom = tb.face;
   return `
@@ -401,7 +399,6 @@ function table(L, layout) {
     <g>${rows}</g>
     ${grainOver("clip-table", "grain-t", L.canvas, 0.9)}
     <polygon points="${pts(quad)}" fill="url(#table-light)"/>
-    <g filter="url(#blur14)" opacity=".7"><polygon points="${pts(shadow)}" fill="#0c0602"/></g>
     <path d="M${r(fl.x)} ${faceTop}H${r(fr.x)}" stroke="#e8b47a" stroke-opacity=".45" stroke-width="3"/>
     <rect x="${r(fl.x - 40)}" y="${faceTop + 2}" width="${r(fr.x - fl.x + 80)}" height="${faceBottom - faceTop + 200}" fill="url(#face)"/>
     ${grainOverLocal(fl.x - 40, faceTop + 2, fr.x - fl.x + 80, faceBottom - faceTop + 200, 0.7)}
@@ -450,8 +447,6 @@ export function sceneSvg(layout) {
   const left = sideWall(L, "left", rand);
   const right = sideWall(L, "right", rand);
   const win = sternWindows(L);
-  const t = L.title;
-  const boardW = layout === "wide" ? 470 : 430;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${canvas.x} ${canvas.y} ${canvas.w} ${canvas.h}" width="${canvas.w}" height="${canvas.h}">
   <defs>
     ${grainFilter("grain-h", canvas, 0.0028, 0.085, 5)}
@@ -497,13 +492,6 @@ export function sceneSvg(layout) {
     ${win.frame}
     <ellipse cx="${(L.windows.x0 + L.windows.x1) / 2}" cy="${L.windows.y1 + 60}" rx="${(L.windows.x1 - L.windows.x0) * 0.75}" ry="160" fill="url(#window-bounce)"/>
     ${L.lanterns.map((l) => `<ellipse cx="${l.x}" cy="${l.y + l.drop + 40}" rx="230" ry="200" fill="url(#lamp-wall)"/>`).join("")}
-    <g>
-      <rect x="${t.x - boardW / 2 + 6}" y="${t.y - 26}" width="${boardW}" height="64" fill="#000" opacity=".45" filter="url(#blur6)"/>
-      <rect x="${t.x - boardW / 2}" y="${t.y - 32}" width="${boardW}" height="64" rx="5" fill="url(#board)" stroke="#1a0c04" stroke-width="3"/>
-      <rect x="${t.x - boardW / 2 + 7}" y="${t.y - 25}" width="${boardW - 14}" height="50" rx="3" fill="none" stroke="#c89640" stroke-opacity=".7" stroke-width="2"/>
-      ${grainOverLocal(t.x - boardW / 2, t.y - 32, boardW, 64)}
-      ${[-1, 1].map((s) => `<circle cx="${t.x + s * (boardW / 2 - 16)}" cy="${t.y}" r="4" fill="#c89640"/>`).join("")}
-    </g>
   </g>
   ${win.glass}
   ${sill(L)}
@@ -518,8 +506,6 @@ export function sceneSvg(layout) {
   sceneCache.set(layout, svg);
   return svg;
 }
-
-// The poster's soft shadow on the wall, the chart and props are drawn over the picture.
 
 // --- the sea outside the stern windows (inline, so it can move) -----------------------------
 
@@ -548,108 +534,7 @@ export const SEA = `
   <g class="swell swell-3"><path d="M-120 198 q30 -7 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 V220 H-120 z" fill="#0d3152"/></g>
 </svg>`;
 
-// --- the chart ---------------------------------------------------------------------------
-
-// The paper chart (flat, 800 x 460; app.js lays it on the table): worn edges and folds,
-// coasts with hatching, soundings, a sea serpent, the sea's name and the course to the
-// chosen destination (drawn progressively through a mask). `seaName` is already escaped.
-export function chartSvg(mode, seaName = "") {
-  const course = routePath(mode);
-  const to = DESTINATIONS[mode];
-  const rand = random(3);
-  const edge = (() => {
-    const n = 26;
-    const top = Array.from({ length: n + 1 }, (_, i) => `${r((800 * i) / n)},${r(4 + rand() * 6)}`);
-    const right = Array.from({ length: 14 }, (_, i) => `${r(794 - rand() * 6)},${r((460 * (i + 1)) / 14)}`);
-    const bottom = Array.from({ length: n }, (_, i) => `${r(800 - (800 * (i + 1)) / n)},${r(454 - rand() * 6)}`);
-    const left = Array.from({ length: 13 }, (_, i) => `${r(4 + rand() * 6)},${r(460 - (460 * (i + 1)) / 14)}`);
-    return [...top, ...right, ...bottom, ...left].join(" ");
-  })();
-  const soundings = Array.from({ length: 34 }, () => {
-    const x = 60 + rand() * 680;
-    const y = 50 + rand() * 360;
-    return `<text x="${r(x)}" y="${r(y)}">${Math.floor(3 + rand() * 40)}</text>`;
-  }).join("");
-  const rose = { x: 700, y: 380 };
-  const rhumbs = Array.from({ length: 16 }, (_, k) => {
-    const a = (Math.PI * 2 * k) / 16;
-    return `<path d="M${rose.x} ${rose.y} L${Math.round(rose.x + Math.cos(a) * 900)} ${Math.round(rose.y + Math.sin(a) * 900)}"/>`;
-  }).join("");
-  return `
-<svg class="chart-art" viewBox="0 0 800 460" aria-hidden="true">
-  <defs>
-    <filter id="chart-paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="fine"/>
-      <feColorMatrix in="fine" type="matrix" values="0 0 0 0 .35  0 0 0 0 .24  0 0 0 0 .12  -1.1 0 0 0 .7" result="speck"/>
-      <feTurbulence type="fractalNoise" baseFrequency=".012" numOctaves="3" seed="8" result="blot"/>
-      <feColorMatrix in="blot" type="matrix" values="0 0 0 0 .45  0 0 0 0 .28  0 0 0 0 .1  1.1 0 0 0 -.56" result="stain"/>
-      <feMerge><feMergeNode in="stain"/><feMergeNode in="speck"/></feMerge>
-    </filter>
-    <radialGradient id="chart-base" cx=".5" cy=".45" r=".75">
-      <stop offset="0" stop-color="#f0dfb6"/><stop offset=".7" stop-color="#e2c68f"/><stop offset="1" stop-color="#b98d52"/>
-    </radialGradient>
-    <linearGradient id="chart-curl" x1="1" y1="1" x2=".7" y2=".7"><stop offset="0" stop-color="#fff4d8"/><stop offset=".5" stop-color="#d9bb83"/><stop offset="1" stop-color="#9a7140"/></linearGradient>
-    <pattern id="chart-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
-      <path d="M0 0 V7" stroke="#6e5332" stroke-width=".8" opacity=".4"/>
-    </pattern>
-    <clipPath id="chart-clip"><polygon points="${edge}"/></clipPath>
-    <mask id="chart-course-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="800" height="460"><path class="course-reveal" d="${course}" pathLength="1" stroke="#fff" stroke-width="16" fill="none"/></mask>
-  </defs>
-  <g clip-path="url(#chart-clip)">
-    <rect width="800" height="460" fill="url(#chart-base)"/>
-    <rect width="800" height="460" fill="#9cc2b5" opacity=".22"/>
-    <rect width="800" height="460" filter="url(#chart-paper)" opacity=".5"/>
-    <g stroke="#6e5332" stroke-width=".7" opacity=".2">${rhumbs}</g>
-    <g fill="#e1c992" stroke="#5a4126" stroke-width="2" stroke-linejoin="round">
-      <path d="M0 0 H200 C180 26 150 40 124 58 C96 80 60 72 30 96 C16 106 6 104 0 110 Z"/>
-      <path d="M800 0 V96 C770 90 744 66 716 50 C690 34 676 18 664 0 Z"/>
-      <path d="M330 248 c18 -24 58 -28 76 -10 c16 16 10 38 -12 44 c-24 8 -50 2 -62 -12 c-8 -8 -6 -16 -2 -22 z"/>
-      <path d="M0 404 C40 388 92 394 126 414 C146 428 156 444 160 460 H0 Z"/>
-      <path d="M540 70 c10 -10 30 -10 36 0 c4 8 -4 16 -16 16 c-12 0 -24 -6 -20 -16 z"/>
-    </g>
-    <g fill="url(#chart-hatch)"><path d="M0 0 H200 C180 26 150 40 124 58 C96 80 60 72 30 96 C16 106 6 104 0 110 Z"/><path d="M800 0 V96 C770 90 744 66 716 50 C690 34 676 18 664 0 Z"/><path d="M0 404 C40 388 92 394 126 414 C146 428 156 444 160 460 H0 Z"/></g>
-    <g fill="none" stroke="#5a4126" stroke-width="1" opacity=".45">
-      <path d="M0 122 C30 112 70 92 112 74 C146 58 176 40 214 0"/><path d="M0 418 C40 402 96 408 134 426"/><path d="M652 0 C664 22 688 40 716 60 C740 76 770 98 800 106"/>
-    </g>
-    <g fill="#7d9a5a" opacity=".6"><circle cx="360" cy="258" r="6"/><circle cx="378" cy="252" r="5"/><circle cx="54" cy="438" r="6"/><circle cx="80" cy="30" r="5"/><circle cx="112" cy="22" r="4"/></g>
-    <g font-family="Georgia, serif" font-size="9" font-style="italic" fill="#5a4126" opacity=".45">${soundings}</g>
-    <g class="serpent" fill="none" stroke="#4d5a52" stroke-width="2.4" opacity=".55" stroke-linecap="round">
-      <path d="M230 410 c12 -18 24 -18 36 0 c12 18 24 18 36 0 c12 -18 24 -18 36 0"/>
-      <path d="M342 410 c6 -10 16 -14 24 -8 l10 -2 l-6 8 c4 6 0 10 -6 10"/>
-      <path d="M226 412 l-12 6"/>
-    </g>
-    <g class="chart-rose" transform="translate(${rose.x} ${rose.y})" opacity=".55">
-      <circle r="44" fill="none" stroke="#6e5332" stroke-width="1.6"/>
-      <path d="M0 -54 L8 0 L0 54 L-8 0 Z" fill="#6e5332"/><path d="M-54 0 L0 -8 L54 0 L0 8 Z" fill="#6e5332" opacity=".6"/>
-      <path d="M0 -54 L8 0 L-8 0 Z" fill="#a3281c"/>
-    </g>
-    <text x="400" y="438" text-anchor="middle" font-family="Pirata One, serif" font-size="26" fill="#5a4126" opacity=".6">${seaName}</text>
-    <rect x="16" y="16" width="768" height="428" fill="none" stroke="#5a4126" stroke-width="1.5" opacity=".5"/>
-    <rect x="22" y="22" width="756" height="416" fill="none" stroke="#5a4126" stroke-width=".8" opacity=".4"/>
-    <path d="M400 0 V460 M0 230 H800" stroke="#7a5a32" stroke-width="2" opacity=".14"/>
-    <path d="M402 0 V460 M0 232 H800" stroke="#fff6dc" stroke-width="1.4" opacity=".28"/>
-    ${
-      course
-        ? `<path d="${course}" stroke="#5e1410" stroke-width="8" fill="none" opacity=".16" mask="url(#chart-course-mask)"/>
-    <path class="course" d="${course}" stroke="#a3281c" stroke-width="4.6" stroke-dasharray="12 9" stroke-linecap="round" fill="none" mask="url(#chart-course-mask)"/>
-    <g class="course-end" transform="translate(${to.x} ${to.y + 30})"><path d="M-9 -9 L9 9 M9 -9 L-9 9" stroke="#a3281c" stroke-width="5" stroke-linecap="round"/></g>`
-        : ""
-    }
-    <g class="home-ship" transform="translate(${HOME.x} ${HOME.y})">
-      <ellipse rx="30" ry="7" cy="16" fill="#3b2a18" opacity=".22"/>
-      <path d="M-26 4 H26 L19 14 H-19 Z" fill="#6e4322" stroke="#2f1a0a" stroke-width="1.6"/>
-      <path d="M-2 4 V-30 M12 4 V-20" stroke="#3b2a18" stroke-width="2.6"/>
-      <path d="M-2 -28 Q-20 -16 -2 -2 Z M12 -18 Q2 -9 12 0 Z" fill="#f4ead2" stroke="#6e5332" stroke-width="1.3"/>
-      <path d="M-2 -30 l14 4 l-14 4 z" fill="#a3281c"/>
-    </g>
-    <rect width="800" height="460" fill="none" stroke="#7a5428" stroke-width="18" opacity=".18" filter="url(#chart-paper)"/>
-  </g>
-  <path d="M800 400 L744 460 L800 460 Z" fill="#000" opacity=".18"/>
-  <path d="M800 404 Q770 418 750 460 L800 460 Z" fill="url(#chart-curl)" stroke="#8a6a3a" stroke-width="1"/>
-</svg>`;
-}
-
-// --- the destination miniatures (painted wargame pieces on round bases) -------------------
+// --- the battle miniatures (painted wargame pieces on round bases) ---------------------------
 
 // A round wooden base with a painted top; `paint` is drawn clipped to it.
 function base(id, paint) {
@@ -935,35 +820,6 @@ export const MODELS = `<svg class="prop-svg" viewBox="0 0 320 190" aria-hidden="
   ${modelShip(190, 176, 0.9, "cream", "wood", 3)}
 </svg>`;
 
-// The wanted poster's paper (its words are HTML on top, see app.js).
-export const POSTER = `<svg class="poster-paper" viewBox="0 0 220 300" preserveAspectRatio="none" aria-hidden="true">
-  <defs>
-    <linearGradient id="po-paper" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3e3bb"/><stop offset=".6" stop-color="#e0c48c"/><stop offset="1" stop-color="#b48a52"/></linearGradient>
-    <filter id="po-tex" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="3" seed="6"/><feColorMatrix type="matrix" values="0 0 0 0 .42  0 0 0 0 .26  0 0 0 0 .1  1.5 0 0 0 -.62"/></filter>
-    <clipPath id="po-clip"><path d="M6 4 L60 8 L112 2 L170 7 L216 3 L213 80 L218 160 L212 240 L216 296 L150 292 L96 298 L40 292 L4 297 L8 220 L2 140 L7 60 Z"/></clipPath>
-  </defs>
-  <path d="M14 14 L222 12 L226 304 L12 306 Z" fill="#000" opacity=".5" transform="translate(6 6)" style="filter:blur(6px)"/>
-  <g clip-path="url(#po-clip)">
-    <rect width="220" height="300" fill="url(#po-paper)"/>
-    <rect width="220" height="300" filter="url(#po-tex)"/>
-    <rect x="14" y="14" width="192" height="272" fill="none" stroke="#5a3a1a" stroke-width="2" opacity=".6"/>
-    <path d="M110 0 V300 M0 150 H220" stroke="#7a5a32" stroke-width="1.5" opacity=".16"/>
-    <g transform="translate(110 132)">
-      <rect x="-48" y="-50" width="96" height="92" fill="#e9d6a8" stroke="#5a3a1a" stroke-width="1.6"/>
-      <g stroke="#4a2e16" stroke-width=".7" fill="none" opacity=".28">
-        ${Array.from({ length: 22 }, (_, i) => `<path d="M-46 ${-46 + i * 4.2} L46 ${-50 + i * 4.2}"/>`).join("")}
-      </g>
-      <path d="M-30 40 C-30 18 -20 8 0 8 C20 8 30 18 30 40 Z" fill="#3a2414"/>
-      <ellipse cx="0" cy="-8" rx="17" ry="20" fill="#d8b58c" stroke="#3a2414" stroke-width="1.4"/>
-      <path d="M-17 -2 C-14 18 14 18 17 -2 C10 10 -10 10 -17 -2 Z" fill="#3a2414"/>
-      <path d="M-14 -14 L14 -10" stroke="#1a0e06" stroke-width="2"/><ellipse cx="-6" cy="-11" rx="5" ry="4" fill="#1a0e06"/>
-      <circle cx="7" cy="-11" r="2" fill="#1a0e06"/>
-      <path d="M-40 -22 C-30 -40 30 -40 40 -22 C24 -30 -24 -30 -40 -22 Z M-24 -30 C-20 -48 20 -48 24 -30 Z" fill="#1f140c"/>
-    </g>
-  </g>
-  <circle cx="110" cy="12" r="6" fill="#3a2a1a"/><circle cx="108" cy="10" r="2.4" fill="#c8a76c"/>
-</svg>`;
-
 // A brass ship's lantern on its chain (inline, so it can sway and flicker).
 export function lanternSvg(drop) {
   return `<svg class="lantern-art" viewBox="0 ${-drop} 80 ${drop + 150}" aria-hidden="true">
@@ -984,4 +840,3 @@ export function lanternSvg(drop) {
 </svg>`;
 }
 
-export { CHART };
