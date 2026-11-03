@@ -15,8 +15,9 @@ navegador gracias a [Pyodide](https://pyodide.org).
   barcos enemigos quedan) y al terminar. Lo que dice sale siempre en su bocadillo. Sus
   frases están en `web/js/parrot-lines.js` por si queréis otras palabras.
 - **Sonido**: apagado hasta que lo enciendes con 🔊 (la web recuerda tu elección). Entonces
-  el loro dice además sus frases con las voces de tu dispositivo, o grazna si no hay voz
-  para el idioma. Si tu sistema tiene activado *reducir movimiento*, las animaciones grandes se
+  el loro grazna (un graznido sintetizado por la propia web) y dice su frase con voz grave,
+  usando las voces de tu dispositivo; si no hay voz para el idioma, solo grazna. Su tono,
+  su velocidad y el graznido son constantes al principio de `web/js/sound.js`. Si tu sistema tiene activado *reducir movimiento*, las animaciones grandes se
   quedan quietas.
 - **Clasificación**: la pestaña *Clasificación* de la web muestra el último torneo oficial.
 - **Escribe tu propio bot**: mira [Escribe un bot](write-a-bot.md). Necesitas un único

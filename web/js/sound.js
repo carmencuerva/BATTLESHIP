@@ -6,9 +6,43 @@
 
 import { load, save } from "./store.js";
 
+// --- tune the parrot here -------------------------------------------------------------
+
+// The spoken words (the browser's speechSynthesis, after the squawk).
+export const PARROT_VOICE = {
+  pitch: 0.6, // 0..2, 1 = the voice's normal pitch: low and gravelly, like a macaw
+  rate: 0.9, // 1 = normal speed
+  volume: 1, // 0..1
+  afterSquawk: 0.42, // seconds between the start of the squawk and the words
+};
+
+// The squawk before every line: a hoarse, choppy "RAAAK-ak". Each chirp glides down.
+export const SQUAWK = {
+  chirps: [
+    { from: 780, to: 300, at: 0, dur: 0.24 },
+    { from: 620, to: 250, at: 0.28, dur: 0.15 },
+  ],
+  detune: 9, // Hz between the two sawtooths that rasp against each other
+  vibratoHz: 30, // pitch wobble: speed…
+  vibratoDepth: 40, // …and width in Hz
+  flutterHz: 21, // volume stutter that makes it choppy: speed…
+  flutter: 0.55, // …and depth, 0..1
+  bandHz: 1150, // the nasal band-pass filter: centre…
+  bandQ: 3.2, // …and narrowness
+  rasp: 0.5, // breathy noise mixed in, 0..1
+  volume: 0.5, // 0..1 (0.5 is about as loud as the cannon)
+};
+
+// The band-pass filter keeps only a slice of the sound; this makes up for it.
+const SQUAWK_MAKEUP = 2.8;
+
+// ----------------------------------------------------------------------------------------
+
 let ctx = null;
 let master = null;
+let voiceBus = null; // the parrot's squawks go through here (its own volume)
 let noise = null;
+let pendingWords = null; // the words waiting for their squawk to finish
 let muted = load("sound", "off") !== "on"; // silent until the player turns it on
 let unlocked = false;
 
@@ -28,7 +62,10 @@ export function setMuted(value) {
   muted = value;
   save("sound", value ? "off" : "on");
   if (master) master.gain.value = muted ? 0 : 0.5;
-  if (muted) globalThis.speechSynthesis?.cancel?.();
+  if (muted) {
+    clearTimeout(pendingWords);
+    globalThis.speechSynthesis?.cancel?.();
+  }
 }
 
 function pickVoice(synth, lang) {
@@ -36,11 +73,9 @@ function pickVoice(synth, lang) {
   return voices.find((v) => v.localService) ?? voices[0] ?? null;
 }
 
-// The parrot says `text` in a high, quick voice in `lang` ("es" or "en"). Returns false
-// when it cannot (sound off, no gesture yet, no speech engine or no voice for the
-// language), so the caller can squawk instead.
-export function speak(text, lang) {
-  if (muted || !unlocked || !text) return false;
+// The words, in a low voice in `lang` ("es" or "en"). False if there is no speech engine
+// or no voice for the language (then the squawk and the bubble are all there is).
+function sayWords(text, lang) {
   const synth = globalThis.speechSynthesis;
   const Utterance = globalThis.SpeechSynthesisUtterance;
   if (!synth || !Utterance) return false;
@@ -51,14 +86,28 @@ export function speak(text, lang) {
     const line = new Utterance(text);
     line.voice = voice;
     line.lang = voice.lang;
-    line.pitch = 1.9; // as high as voices go: a parrot
-    line.rate = 1.2;
-    line.volume = 0.9;
+    line.pitch = PARROT_VOICE.pitch;
+    line.rate = PARROT_VOICE.rate;
+    line.volume = PARROT_VOICE.volume;
     synth.speak(line);
     return true;
   } catch {
     return false; // a broken speech engine must never stop the game
   }
+}
+
+// The parrot speaks: a squawk, then `text` in its low voice when the device has one for
+// `lang`. Nothing at all while sound is off or before the player has touched the page.
+// Returns {squawk, words}: whether each could be played or scheduled.
+export function parrotSay(text, lang) {
+  const result = { squawk: false, words: false };
+  if (muted || !unlocked || !text) return result;
+  result.squawk = squawk();
+  const synth = globalThis.speechSynthesis;
+  result.words = Boolean(synth && globalThis.SpeechSynthesisUtterance && pickVoice(synth, lang));
+  clearTimeout(pendingWords);
+  if (result.words) pendingWords = setTimeout(() => sayWords(text, lang), PARROT_VOICE.afterSquawk * 1000);
+  return result;
 }
 
 function audio() {
@@ -70,6 +119,9 @@ function audio() {
     master = ctx.createGain();
     master.gain.value = 0.5;
     master.connect(ctx.destination);
+    voiceBus = ctx.createGain();
+    voiceBus.gain.value = 1;
+    voiceBus.connect(master);
     noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -79,13 +131,71 @@ function audio() {
 }
 
 // An envelope: quick attack to `peak`, exponential decay over `dur` seconds.
-function envelope(ac, start, dur, peak) {
+function envelope(ac, start, dur, peak, out = master) {
   const gain = ac.createGain();
   gain.gain.setValueAtTime(0.0001, start);
   gain.gain.exponentialRampToValueAtTime(peak, start + Math.min(0.02, dur / 4));
   gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  gain.connect(master);
+  gain.connect(out);
   return gain;
+}
+
+// One squawk, built from SQUAWK (see the top of this file). Returns false if silent.
+function squawk() {
+  try {
+    const ac = audio();
+    if (!ac) return false;
+    const s = SQUAWK;
+    for (const chirp of s.chirps) {
+      const start = ac.currentTime + chirp.at;
+      const stop = start + chirp.dur + 0.05;
+      const band = ac.createBiquadFilter();
+      band.type = "bandpass";
+      band.frequency.value = s.bandHz;
+      band.Q.value = s.bandQ;
+      // choppy: the volume flutters
+      const flutter = ac.createGain();
+      flutter.gain.value = 1 - s.flutter / 2;
+      const flutterLfo = ac.createOscillator();
+      flutterLfo.frequency.value = s.flutterHz;
+      const flutterDepth = ac.createGain();
+      flutterDepth.gain.value = s.flutter / 2;
+      flutterLfo.connect(flutterDepth).connect(flutter.gain);
+      band.connect(flutter).connect(envelope(ac, start, chirp.dur, s.volume * SQUAWK_MAKEUP, voiceBus));
+      // hoarse: two sawtooths a few Hz apart, gliding down, with vibrato
+      const vibrato = ac.createOscillator();
+      vibrato.frequency.value = s.vibratoHz;
+      const vibratoDepth = ac.createGain();
+      vibratoDepth.gain.value = s.vibratoDepth;
+      vibrato.connect(vibratoDepth);
+      for (const offset of [0, s.detune]) {
+        const saw = ac.createOscillator();
+        saw.type = "sawtooth";
+        saw.frequency.setValueAtTime(chirp.from + offset, start);
+        saw.frequency.exponentialRampToValueAtTime(chirp.to + offset, start + chirp.dur);
+        vibratoDepth.connect(saw.frequency);
+        saw.connect(band);
+        saw.start(start);
+        saw.stop(stop);
+      }
+      // breathy: a little noise through the same throat
+      const breath = ac.createBufferSource();
+      breath.buffer = noise;
+      breath.loop = true;
+      const breathGain = ac.createGain();
+      breathGain.gain.value = s.rasp;
+      breath.connect(breathGain).connect(band);
+      breath.start(start);
+      breath.stop(stop);
+      for (const lfo of [vibrato, flutterLfo]) {
+        lfo.start(start);
+        lfo.stop(stop);
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function tone({ freq, to = freq, dur = 0.2, type = "sine", peak = 0.3, delay = 0 }) {
@@ -138,13 +248,6 @@ const effects = {
     for (let i = 0; i < 7; i++) {
       const f = 400 + Math.random() * 600;
       tone({ freq: f, to: f * 1.8, dur: 0.07, peak: 0.12, delay: 0.4 + i * 0.16 + Math.random() * 0.08 });
-    }
-  },
-  squawk(mood = "info") {
-    // Two quick chirps through a nasal filter; excited moods squawk higher.
-    const base = mood === "sunk" ? 1500 : mood === "hit" ? 1300 : mood === "miss" ? 900 : 1100;
-    for (const [k, delay] of [0, 0.13].entries()) {
-      tone({ freq: base * (1 + 0.15 * k), to: base * 0.7, dur: 0.1, type: "sawtooth", peak: 0.07, delay });
     }
   },
   victory() {

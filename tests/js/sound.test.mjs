@@ -2,29 +2,33 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 // Fakes for the browser's audio and speech engines, installed before the module loads.
-let contexts = 0;
+const made = { contexts: 0, oscillators: [] };
+const param = () => ({ value: 0, ramps: [], setValueAtTime(v) { this.value = v; }, exponentialRampToValueAtTime(v) { this.ramps.push(v); } });
+const node = (extra = {}) => ({ connect: (to) => to, start() {}, stop() {}, ...extra });
 class FakeAudioContext {
   constructor() {
-    contexts += 1;
+    made.contexts += 1;
     this.state = "running";
     this.currentTime = 0;
     this.sampleRate = 8000;
     this.destination = {};
   }
   createGain() {
-    return { gain: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
+    return node({ gain: param() });
   }
   createBuffer() {
     return { getChannelData: () => new Float32Array(8) };
   }
   createOscillator() {
-    return { type: "", frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {}, start() {}, stop() {} };
+    const osc = node({ type: "sine", frequency: param() });
+    made.oscillators.push(osc);
+    return osc;
   }
   createBufferSource() {
-    return { connect: (x) => x, start() {}, stop() {} };
+    return node();
   }
   createBiquadFilter() {
-    return { Q: {}, frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect: () => ({}) };
+    return node({ type: "", Q: param(), frequency: param() });
   }
 }
 const spoken = [];
@@ -37,53 +41,73 @@ globalThis.SpeechSynthesisUtterance = class {
 };
 globalThis.speechSynthesis = { getVoices: () => voices, cancel() {}, speak: (u) => spoken.push(u) };
 
-const { isMuted, setMuted, sfx, speak, unlock } = await import("../../web/js/sound.js");
+const { PARROT_VOICE, SQUAWK, isMuted, parrotSay, setMuted, sfx, unlock } = await import("../../web/js/sound.js");
+const wait = (s) => new Promise((resolve) => setTimeout(resolve, s * 1000 + 30));
 
 test("silent by default, and nothing sounds before the first gesture", () => {
   assert.equal(isMuted(), true); // no remembered choice: muted
   setMuted(false);
   sfx.launch();
-  sfx.splash();
-  assert.equal(contexts, 0, "no audio context before a click or key press");
   voices = [{ lang: "es-ES", localService: true }];
-  assert.equal(speak("¡Agua!", "es"), false);
-  assert.equal(spoken.length, 0);
+  assert.deepEqual(parrotSay("¡Hundido!", "es"), { squawk: false, words: false });
+  assert.equal(made.contexts, 0, "no audio context before a click or key press");
 });
 
-test("after a gesture: effects play and the parrot speaks high, in its language", () => {
+test("a squawk first: hoarse sawtooths gliding down", () => {
   unlock();
-  sfx.launch();
-  sfx.sink();
-  assert.equal(contexts, 1);
+  made.oscillators.length = 0;
+  const result = parrotSay("¡Hundido! Quedan 3 barcos por hundir.", "es");
+  assert.equal(result.squawk, true);
+  const saws = made.oscillators.filter((o) => o.type === "sawtooth");
+  assert.equal(saws.length, 2 * SQUAWK.chirps.length); // two detuned saws per chirp
+  for (const saw of saws) assert.ok(saw.frequency.ramps[0] < saw.frequency.value, "the pitch falls");
+});
+
+test("then the words, low and slow, in the page's language", async () => {
+  spoken.length = 0;
   voices = [
     { lang: "en-GB", localService: true },
     { lang: "es-ES", localService: false },
     { lang: "es-MX", localService: true },
   ];
-  assert.equal(speak("¡Tocado, grumete!", "es"), true);
+  const result = parrotSay("¡Hundido! Queda 1 barco por hundir.", "es");
+  assert.equal(result.words, true);
+  assert.equal(spoken.length, 0, "the words wait for the squawk");
+  await wait(PARROT_VOICE.afterSquawk);
   const line = spoken.at(-1);
-  assert.equal(line.text, "¡Tocado, grumete!");
+  assert.equal(line.text, "¡Hundido! Queda 1 barco por hundir.");
   assert.equal(line.lang, "es-MX"); // a local Spanish voice is preferred
-  assert.ok(line.pitch > 1.5);
+  assert.ok(line.pitch < 1, "a low, macaw-like voice");
+  assert.equal(line.rate, PARROT_VOICE.rate);
 });
 
-test("no voice for the language, or sound off: speak declines so the parrot squawks", () => {
+test("no voice for the language: only the squawk (the bubble shows the words)", async () => {
+  spoken.length = 0;
   voices = [{ lang: "fr-FR", localService: true }];
-  assert.equal(speak("Water, water!", "en"), false);
-  voices = [{ lang: "en-US", localService: true }];
-  setMuted(true);
-  assert.equal(speak("Water, water!", "en"), false);
-  assert.equal(isMuted(), true);
+  assert.deepEqual(parrotSay("Sunk! 2 ships left to sink.", "en"), { squawk: true, words: false });
+  await wait(PARROT_VOICE.afterSquawk);
+  assert.equal(spoken.length, 0);
 });
 
-test("a broken speech engine never throws into the game", () => {
+test("sound off: neither squawk nor words, and pending words are dropped", async () => {
+  spoken.length = 0;
+  voices = [{ lang: "en-US", localService: true }];
+  parrotSay("Victory!", "en");
+  setMuted(true); // turned off before the words come
+  await wait(PARROT_VOICE.afterSquawk);
+  assert.equal(spoken.length, 0);
+  assert.deepEqual(parrotSay("Victory!", "en"), { squawk: false, words: false });
+});
+
+test("a broken speech engine never throws into the game", async () => {
   setMuted(false);
   voices = [{ lang: "es-ES", localService: true }];
-  const realSpeak = globalThis.speechSynthesis.speak;
+  const real = globalThis.speechSynthesis.speak;
   globalThis.speechSynthesis.speak = () => {
     throw new TypeError("Failed to convert value to 'SpeechSynthesisVoice'");
   };
-  assert.equal(speak("¡Hundido!", "es"), false);
-  globalThis.speechSynthesis.speak = realSpeak;
+  assert.doesNotThrow(() => parrotSay("¡Hundido!", "es"));
+  await wait(PARROT_VOICE.afterSquawk); // the delayed words fail quietly too
+  globalThis.speechSynthesis.speak = real;
   setMuted(true);
 });

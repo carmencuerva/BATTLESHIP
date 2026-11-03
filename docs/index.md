@@ -15,8 +15,9 @@ the same code plays the official tournament in CI and runs in your browser via
   how many enemy ships are left) and when the game ends. Its words always appear in its
   speech bubble. Its lines live in `web/js/parrot-lines.js` if you want other words.
 - **Sound**: off until you turn it on with 🔊 (the page remembers your choice). The parrot
-  then also says its lines with your device's voices, or squawks if there is no voice for
-  the language. With *reduce motion* switched on in your system, the big animations stay
+  then squawks (synthesised by the page) and says its line in a low voice, using your
+  device's voices; with no voice for the language it only squawks. Its pitch, speed and
+  squawk are constants at the top of `web/js/sound.js`. With *reduce motion* switched on in your system, the big animations stay
   still.
 - **Ranking**: the *Ranking* tab of the page shows the latest official tournament.
 - **Write your own bot**: see [Write a bot](write-a-bot.md). You need a single Python file

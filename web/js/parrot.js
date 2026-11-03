@@ -2,7 +2,7 @@
 // of the game) is spoken through its comic speech bubble.
 
 import { getLang } from "./i18n.js";
-import { sfx, speak } from "./sound.js";
+import { parrotSay } from "./sound.js";
 
 const PARROT_SVG = `
 <svg viewBox="0 0 160 200" aria-hidden="true">
@@ -81,8 +81,8 @@ export function createParrot(dock) {
     void bubble.offsetWidth; // restart the pop-in animation
     bubble.className = `bubble show mood-${msg.mood ?? "info"}`;
     bird.className = `parrot talking mood-${msg.mood ?? "info"}`;
-    // A short spoken line if the browser has a voice for the language, else a squawk.
-    if (!speak(msg.voice, getLang())) sfx.squawk(msg.mood);
+    // A squawk, then the same words out loud when the device has a voice for the language.
+    parrotSay(msg.voice, getLang());
     clearTimeout(timers.hide);
     clearTimeout(timers.talk);
     timers.talk = setTimeout(() => bird.classList.remove("talking"), Math.min(1100, timing.life));
