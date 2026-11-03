@@ -29,7 +29,7 @@ import { bubbles, explode, launchMissile, splash } from "./fx.js";
 import { esc, th } from "./html.js";
 import { getLang, setLang, t, tn } from "./i18n.js";
 import { leaderboardHtml, stageName } from "./leaderboard.js";
-import { createParrot } from "./parrot.js";
+import { createParrot, PARROT_SVG } from "./parrot.js";
 import { lineForEnd, lineForLoss, lineForShot, lineForTurn } from "./parrot-lines.js";
 import { miniShip } from "./ships.js";
 import { setMusic, updateMusic } from "./music.js";
@@ -931,11 +931,16 @@ function problemText(problem, reason = "") {
   return t(`why_${problem.code}`, vars);
 }
 
+// The tutorial's steps: what each one highlights (its words are tutor_1… in i18n.js).
+const TUTOR_STEPS = [[".ship-list", "#place-board"], ["#rotate"], ["#random"], ["#clear"], ["#place-board"], ["#ready"]];
+
 function placementScreen(i) {
   const side = match.sides[i];
   const { size, fleet } = match;
   // drag: {k, x0, y0, moved, fromBoard} while a ship is being dragged.
+  // tutor: the step of the parrot's tutorial on show (0..), or null when it is closed.
   const ed = { placement: fleet.map(() => null), selected: 0, orient: "H", hover: null, problem: null, drag: null };
+  ed.tutor = load("tutorial", "") === "done" ? null : 0;
   let ghost = null;
   let swallowClick = false; // the click that ends a drag must not also place or pick up
   let quiet = null; // "r,c" where a ship was just put down: no preview there until the pointer moves on
@@ -1114,6 +1119,53 @@ function placementScreen(i) {
     drawAll();
   }
 
+  // The parrot's tutorial: one instruction at a time, in a big bubble beside the parrot
+  // (in its own strip above the board, so it never covers it), with the control it talks
+  // about highlighted.
+  function tutorHtml() {
+    if (ed.tutor === null) return "";
+    const n = ed.tutor + 1;
+    const last = n === TUTOR_STEPS.length;
+    return `
+      <div class="tutor" role="region" aria-label="${th("tutor_help")}">
+        <div class="tutor-parrot" aria-hidden="true">${PARROT_SVG}</div>
+        <div class="tutor-bubble">
+          <p class="tutor-step">${th("tutor_step", { n, total: TUTOR_STEPS.length })}</p>
+          <p class="tutor-text" aria-live="polite">${th(`tutor_${n}`)}</p>
+          <div class="tutor-buttons">
+            ${last ? `<button id="tutor-next" class="primary">${th("tutor_done")}</button>` : `<button id="tutor-next" class="primary">${th("tutor_next")}</button><button id="tutor-skip">${th("tutor_skip")}</button>`}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function closeTutor() {
+    ed.tutor = null;
+    save("tutorial", "done");
+    drawAll();
+    app.querySelector("#tutor-help")?.focus({ preventScroll: true });
+  }
+
+  function wireTutor() {
+    app.querySelector("#tutor-help")?.addEventListener("click", () => {
+      ed.tutor = 0;
+      drawAll();
+      app.querySelector("#tutor-next")?.focus({ preventScroll: true });
+    });
+    if (ed.tutor === null) return;
+    for (const sel of TUTOR_STEPS[ed.tutor]) app.querySelector(sel)?.classList.add("tutor-target");
+    app.querySelector("#tutor-skip")?.addEventListener("click", closeTutor);
+    app.querySelector("#tutor-next").addEventListener("click", () => {
+      if (ed.tutor + 1 >= TUTOR_STEPS.length) {
+        closeTutor();
+        return;
+      }
+      ed.tutor += 1;
+      drawAll();
+      app.querySelector("#tutor-next")?.focus({ preventScroll: true });
+    });
+  }
+
   function drawAll() {
     const ships = fleet
       .map((length, k) => {
@@ -1125,22 +1177,17 @@ function placementScreen(i) {
       .join("");
     app.innerHTML = `
       <section class="panel placement">
-        <h2>${th("place_title", { name: side.name })}</h2>
+        <div class="place-head">
+          <h2>${th("place_title", { name: side.name })}</h2>
+          ${ed.tutor === null ? `<button id="tutor-help" class="tutor-help" title="${th("tutor_help")}" aria-label="${th("tutor_help")}">?</button>` : ""}
+        </div>
+        ${tutorHtml()}
         <div class="place-layout">
           <div class="board-frame"><div id="place-board"></div></div>
           <aside class="scroll orders">
             <div class="scroll-roll top"></div>
             <div class="scroll-body">
               <p id="place-note" class="note" role="status" aria-live="polite"></p>
-              <div class="orders-how">
-                <h3>${th("orders_title")}</h3>
-                <ol class="code orders-list">
-                  <li>${th("order_drag")}</li>
-                  <li>${th("order_rotate")}</li>
-                  <li>${th("order_move")}</li>
-                  <li>${th("order_rule")}</li>
-                </ol>
-              </div>
               <div class="orders-hold">
                 <h4>${th("hold_title")}</h4>
                 <div class="ship-list">${ships}</div>
@@ -1193,6 +1240,7 @@ function placementScreen(i) {
       side.board = arena.call("new_board", size, fleet, ed.placement);
       nextPlacement();
     });
+    wireTutor();
     drawBoard();
   }
 

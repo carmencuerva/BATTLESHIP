@@ -4,7 +4,8 @@
 import { getLang } from "./i18n.js";
 import { parrotSay } from "./sound.js";
 
-const PARROT_SVG = `
+// Drawn in profile: one eye, the beak to the right.
+export const PARROT_SVG = `
 <svg viewBox="0 0 160 200" aria-hidden="true">
   <g class="perch">
     <rect x="8" y="176" width="146" height="13" rx="6.5" fill="#7a4a22" stroke="#3d2210" stroke-width="2.5"/>
