@@ -1243,11 +1243,11 @@ input[type="radio"] {
 .missile {
   left: 0;
   top: 0;
-  width: 68px;
-  height: 23px;
-  margin: -11.5px 0 0 -34px;
+  width: 116px;
+  height: 29px;
+  margin: -14.5px 0 0 -72px;
   will-change: transform;
-  filter: drop-shadow(0 5px 3px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.45));
 }
 
 .missile svg {
@@ -1257,31 +1257,39 @@ input[type="radio"] {
 }
 
 .missile .exhaust {
-  transform-origin: 14px 20px;
-  animation: exhaust 0.07s linear infinite alternate;
+  transform-origin: 40px 20px;
+  animation: exhaust 0.06s linear infinite alternate;
 }
 
 @keyframes exhaust {
+  from {
+    transform: scaleX(0.85);
+    opacity: 0.85;
+  }
   to {
-    transform: scaleX(1.35);
+    transform: scaleX(1.25) scaleY(1.08);
+    opacity: 1;
   }
 }
 
+/* The trail: soft grey smoke, darker inside, that grows, drifts and fades. */
 .smoke {
-  width: 14px;
-  height: 14px;
+  --g: 175;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 40%, #ffffff, #cfd8e0 55%, rgba(170, 180, 190, 0) 72%);
-  animation: smoke 0.75s ease-out forwards;
+  background: radial-gradient(circle, rgba(var(--g), var(--g), var(--g), 0.75), rgba(var(--g), var(--g), var(--g), 0.35) 45%, rgba(var(--g), var(--g), var(--g), 0) 72%);
+  filter: blur(1px);
+  animation: smoke 1.3s ease-out forwards;
 }
 
 @keyframes smoke {
   from {
     transform: translate(-50%, -50%) scale(var(--s));
-    opacity: 0.9;
+    opacity: 0.85;
   }
   to {
-    transform: translate(calc(-50% + var(--dx)), calc(-50% - 10px)) scale(calc(var(--s) * 2.6));
+    transform: translate(calc(-50% + var(--dx)), calc(-50% - 16px)) scale(calc(var(--s) * 4.2));
     opacity: 0;
   }
 }

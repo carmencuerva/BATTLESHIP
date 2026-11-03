@@ -2,15 +2,42 @@
 // explosions, water splashes and sinking bubbles. They only decorate events that Python has
 // already decided; none of them changes the game.
 
+// A slim steel missile seen from the side: ogive nose, gunmetal body with a sheen, a few
+// painted bands, swept fins, and a white-hot exhaust plume.
 const MISSILE = `
-<svg viewBox="0 0 120 40" aria-hidden="true">
-  <g class="exhaust"><path d="M14 20 L-6 11 Q2 20 -6 29 Z" fill="#ffb21f"/><path d="M14 20 L2 15 Q7 20 2 25 Z" fill="#fff0a0"/></g>
-  <path d="M30 20 L12 6 L22 20 L12 34 Z" fill="#c4312a" stroke="#4a1210" stroke-width="2" stroke-linejoin="round"/>
-  <rect x="18" y="12" width="70" height="16" rx="8" fill="#e9eef3" stroke="#2c3440" stroke-width="2.5"/>
-  <path d="M86 12 Q112 14 116 20 Q112 26 86 28 Z" fill="#d83a2f" stroke="#4a1210" stroke-width="2.5" stroke-linejoin="round"/>
-  <rect x="44" y="12" width="7" height="16" fill="#2c3440"/>
-  <circle cx="68" cy="20" r="3.5" fill="#2c3440"/>
-  <path d="M24 16 H82" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+<svg viewBox="0 0 160 40" aria-hidden="true">
+  <defs>
+    <linearGradient id="fx-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5d6670"/><stop offset=".22" stop-color="#d9dfe4"/>
+      <stop offset=".5" stop-color="#8b949d"/><stop offset=".8" stop-color="#3b434b"/><stop offset="1" stop-color="#22282e"/>
+    </linearGradient>
+    <linearGradient id="fx-nose" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3f44"/><stop offset=".25" stop-color="#9aa2aa"/><stop offset=".6" stop-color="#40464c"/><stop offset="1" stop-color="#16191c"/>
+    </linearGradient>
+    <linearGradient id="fx-fin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b737b"/><stop offset="1" stop-color="#2a3036"/>
+    </linearGradient>
+    <radialGradient id="fx-plume" cx="1" cy=".5" r="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset=".18" stop-color="#fff2b0"/>
+      <stop offset=".45" stop-color="#ff9a2e" stop-opacity=".9"/><stop offset="1" stop-color="#ff5a10" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="fx-soft" x="-50%" y="-80%" width="200%" height="260%"><feGaussianBlur stdDeviation="1.6"/></filter>
+  </defs>
+  <g class="exhaust" filter="url(#fx-soft)">
+    <ellipse cx="14" cy="20" rx="26" ry="7.5" fill="url(#fx-plume)"/>
+    <ellipse cx="30" cy="20" rx="9" ry="3.6" fill="#fffdf0"/>
+  </g>
+  <path d="M40 14.5 L30 3 L46 3 L58 14.5 Z" fill="url(#fx-fin)" stroke="#1b1f23" stroke-width=".8"/>
+  <path d="M40 25.5 L30 37 L46 37 L58 25.5 Z" fill="url(#fx-fin)" stroke="#1b1f23" stroke-width=".8"/>
+  <rect x="34" y="16.5" width="6" height="7" fill="#2a2f34"/>
+  <path d="M38 14 H118 V26 H38 Z" fill="url(#fx-body)"/>
+  <path d="M118 14 C134 14.5 146 17 156 20 C146 23 134 25.5 118 26 Z" fill="url(#fx-nose)"/>
+  <rect x="64" y="14" width="3" height="12" fill="#b0291f" opacity=".85"/>
+  <rect x="70" y="14" width="1.5" height="12" fill="#e2c35a" opacity=".8"/>
+  <rect x="108" y="14" width="2" height="12" fill="#1f2428" opacity=".7"/>
+  <path d="M96 12.6 L112 12.6 L108 14 L96 14 Z" fill="#4a5158"/>
+  <path d="M40 16.2 H118" stroke="#f4f7f9" stroke-width="1" opacity=".55"/>
+  <path d="M38 26 H118" stroke="#0e1114" stroke-width=".8" opacity=".6"/>
 </svg>`;
 
 let layer = null;
@@ -59,11 +86,11 @@ export function launchMissile(fromRect, toRect, duration = 650) {
     x: (1 - t) ** 2 * from.x + 2 * (1 - t) * t * ctrl.x + t ** 2 * to.x,
     y: (1 - t) ** 2 * from.y + 2 * (1 - t) * t * ctrl.y + t ** 2 * to.y,
   });
-  const scaleAt = (t) => 0.75 + 0.5 * Math.sin(Math.PI * t); // bigger at the top of the arc
+  const scaleAt = (t) => 0.9 + 0.22 * Math.sin(Math.PI * t); // a little bigger at the top of the arc
 
   return new Promise((resolve) => {
     const start = performance.now();
-    let lastPuff = 0;
+    let lastTail = null;
     function frame(now) {
       const t = Math.min(1, (now - start) / duration);
       const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -71,16 +98,22 @@ export function launchMissile(fromRect, toRect, duration = 650) {
       const ahead = point(Math.min(1, eased + 0.02));
       const angle = Math.atan2(ahead.y - p.y, ahead.x - p.x);
       missile.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${angle}rad) scale(${scaleAt(eased)})`;
-      if (now - lastPuff > 22) {
-        lastPuff = now;
-        const back = 26 * scaleAt(eased);
+      // a grey trail that spreads out and drifts up as it thins: one puff every few pixels
+      // of the path, however fast the screen refreshes
+      const back = 44 * scaleAt(eased);
+      const tail = { x: p.x - Math.cos(angle) * back, y: p.y - Math.sin(angle) * back };
+      const from = lastTail ?? tail;
+      const steps = Math.min(30, Math.floor(Math.hypot(tail.x - from.x, tail.y - from.y) / 4));
+      for (let i = 1; i <= steps; i++) {
+        const f = i / steps;
         spawn(
           "smoke",
-          p.x - Math.cos(angle) * back,
-          p.y - Math.sin(angle) * back,
-          `--s:${(0.6 + Math.random() * 0.6).toFixed(2)};--dx:${(Math.random() * 10 - 5).toFixed(1)}px`,
+          from.x + (tail.x - from.x) * f + (Math.random() - 0.5) * 3,
+          from.y + (tail.y - from.y) * f + (Math.random() - 0.5) * 3,
+          `--s:${(0.75 + Math.random() * 0.5).toFixed(2)};--dx:${(Math.random() * 12 - 6).toFixed(1)}px;--g:${Math.round(150 + Math.random() * 50)}`,
         );
       }
+      if (steps || !lastTail) lastTail = tail;
       if (t < 1) {
         requestAnimationFrame(frame);
       } else {
