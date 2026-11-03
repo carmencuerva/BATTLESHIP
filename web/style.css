@@ -2391,21 +2391,8 @@ progress {
   }
 }
 
-/* --- new voyage: the logbook page and the pirate-code scroll ----------------------------- */
+/* --- parchment (the placement orders' scroll) -------------------------------------------- */
 
-.voyage {
-  --ink: #3b2610;
-  --ink-soft: #6b4a26;
-  --paper: #f1e2bd;
-  --paper-dark: #d9c08a;
-  --wax: #a8261c;
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(250px, 1fr);
-  gap: 26px;
-  align-items: start;
-}
-
-.logbook,
 .scroll-body {
   color: var(--ink);
   background:
@@ -2415,173 +2402,12 @@ progress {
     linear-gradient(160deg, var(--paper), var(--paper-dark));
 }
 
-.logbook {
-  position: relative;
-  padding: 26px 30px 22px;
-  border-radius: 6px 18px 10px 22px / 18px 8px 22px 10px;
-  box-shadow:
-    inset 0 0 0 2px rgba(90, 55, 20, 0.35),
-    inset 0 0 40px rgba(110, 60, 10, 0.45),
-    0 16px 36px rgba(0, 0, 0, 0.5);
-  transform: rotate(-0.4deg);
-}
-
-/* burnt, uneven edge */
-.logbook::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: inset 0 0 14px 4px rgba(70, 35, 5, 0.45);
-}
-
-.logbook h2 {
-  margin: 0;
-  font: 44px/1 var(--title-font);
-  color: var(--ink);
-  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
-}
-
-.logbook-sub {
-  margin: 4px 0 16px;
-  font-style: italic;
-  color: var(--ink-soft);
-}
-
-.compass {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  width: 92px;
-  height: 92px;
-  color: var(--ink-soft);
-  opacity: 0.75;
-  animation: compass-drift 14s ease-in-out infinite alternate;
-}
-
-@keyframes compass-drift {
-  to {
-    transform: rotate(14deg);
-  }
-}
-
-.logbook fieldset {
-  border: 1.5px dashed rgba(90, 55, 20, 0.45);
-  border-radius: 10px;
-  margin: 0 0 14px;
-}
-
-.logbook legend,
-.logbook label {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.logbook input,
-.logbook select {
-  width: 100%;
-  min-width: 0;
-  text-overflow: ellipsis;
-  background: rgba(255, 250, 235, 0.75);
-  color: var(--ink);
-  border: 1.5px solid rgba(90, 55, 20, 0.55);
-  font-weight: 600;
-}
-
-.logbook input:focus-visible,
-.logbook select:focus-visible,
-.seal:focus-within {
-  outline: 3px solid var(--wax);
-  outline-offset: 2px;
-}
-
-.seals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 10px 12px 14px;
-}
-
-.seal {
-  position: relative;
-  flex: 1 1 150px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 10px;
-  border: 2px solid rgba(90, 55, 20, 0.4);
-  border-radius: 14px;
-  background: rgba(255, 250, 235, 0.45);
-  text-align: center;
-  cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s, background 0.2s;
-}
-
-.seal input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-
-.seal:hover {
-  transform: translateY(-2px) rotate(-1deg);
-}
-
-.seal-icon {
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--ink-soft);
-  border: 2px dashed rgba(90, 55, 20, 0.45);
-}
-
-.seal-icon svg {
-  width: 34px;
-  height: 34px;
-}
-
-.seal-text {
-  font-size: 14px;
-  line-height: 1.25;
-}
-
-.seal.chosen {
-  border-color: var(--wax);
-  background: rgba(255, 240, 220, 0.85);
-  transform: rotate(-1.5deg);
-}
-
-.seal.chosen .seal-icon {
-  color: #fff4e4;
-  background: radial-gradient(circle at 35% 30%, #d2463a, var(--wax) 60%, #6e140d);
-  border: 2px solid #6e140d;
-  box-shadow: 0 3px 6px rgba(80, 10, 0, 0.45);
-  animation: stamp 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
-}
-
-@keyframes stamp {
-  from {
-    transform: scale(1.6) rotate(-20deg);
-    opacity: 0;
-  }
-}
-
 .board-button {
   font-family: var(--title-font);
   font-size: 26px;
   letter-spacing: 0.03em;
   padding: 8px 26px;
   margin-top: 4px;
-}
-
-.logbook .error {
-  color: var(--wax);
-  font-weight: 700;
 }
 
 /* The scroll: two wooden rolls and a sheet of parchment between them. */
@@ -2645,26 +2471,6 @@ progress {
   background: radial-gradient(circle at 35% 30%, #d2463a, var(--wax) 60%, #5e100a);
   box-shadow: 0 4px 8px rgba(60, 5, 0, 0.5), inset 0 0 0 4px rgba(255, 255, 255, 0.08);
   transform: rotate(-12deg);
-}
-
-@media (max-width: 860px) {
-  .voyage {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .logbook {
-    padding: 22px 18px 18px;
-  }
-
-  .logbook h2 {
-    font-size: 36px;
-    padding-right: 80px;
-  }
-
-  .compass {
-    width: 70px;
-    height: 70px;
-  }
 }
 
 /* A player's name with, in Spanish, how the parrot should address them. */
@@ -2933,4 +2739,1006 @@ body.dragging-ship * {
   width: 18px;
   height: 18px;
   display: block;
+}
+
+/* --- the captain's cabin (the "Set sail!" screen) ----------------------------------------
+   A wall of dark planks with the stern window, the lantern and the wanted poster; below it
+   the strategy table with the chart (the mode) and the props (the settings). */
+
+.logo-mark {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.16em;
+  margin-right: 0.22em;
+  filter: drop-shadow(0 2px 0 var(--wood-dark));
+}
+
+.ui-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: -4px;
+}
+
+/* Flatter, crisper controls: brass edges, less bevel, small corners. */
+button {
+  border-radius: 5px;
+  border-width: 1px;
+  box-shadow: 0 2px 0 var(--wood-dark);
+}
+
+button:hover:not(:disabled) {
+  transform: none;
+  box-shadow: 0 2px 0 var(--wood-dark), 0 0 10px rgba(242, 193, 78, 0.3);
+}
+
+input,
+select {
+  border-radius: 4px;
+}
+
+:focus-visible {
+  outline: 3px solid #ffd45c;
+  outline-offset: 2px;
+}
+
+.cabin {
+  --brass: #d6a94c;
+  --brass-dark: #7a5418;
+  --plank: #2c1a0e;
+  --ink: #3b2412;
+  --paper: #efdcae;
+  --paper-dark: #d4b47a;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(230px, 290px);
+  grid-template-areas:
+    "plaque window poster"
+    "chart chart spy"
+    "chart chart props"
+    "note note launch";
+  grid-template-rows: auto auto 1fr auto;
+  gap: 14px 18px;
+  padding: 18px;
+  border: 1px solid #120a04;
+  border-radius: 6px;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 60% 45% at 52% 8%, rgba(255, 184, 92, 0.2), transparent 70%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 92px),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.03) 0 9px, transparent 9px 23px),
+    linear-gradient(180deg, #3a2312, var(--plank) 60%, #1d1108);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 0 80px rgba(0, 0, 0, 0.6);
+  transition: transform 0.6s ease-in, opacity 0.6s ease-in, filter 0.6s ease-in;
+}
+
+/* The warm, flickering light of the lantern over the whole scene. */
+.cabin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 55% 50% at 50% 30%, rgba(255, 170, 70, 0.16), transparent 70%);
+  animation: glow 4.2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  22% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.7;
+  }
+  63% {
+    opacity: 0.95;
+  }
+}
+
+/* The strategy table under the chart and the props. */
+.tabletop {
+  grid-row: 2 / -1;
+  grid-column: 1 / -1;
+  margin: -6px -18px -18px;
+  z-index: -1;
+  border-top: 6px solid #160c05;
+  border-radius: 0 0 6px 6px;
+  background:
+    radial-gradient(ellipse 70% 60% at 45% 30%, rgba(255, 180, 90, 0.14), transparent 70%),
+    repeating-linear-gradient(178deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #6a3f1d, #4a2b13 50%, #351e0d);
+  box-shadow: inset 0 10px 18px rgba(0, 0, 0, 0.45);
+}
+
+.cabin-plaque {
+  grid-area: plaque;
+  align-self: center;
+}
+
+.cabin-plaque h2 {
+  margin: 0;
+  font: 46px/1 var(--title-font);
+  color: var(--brass);
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 0 #120a04, 0 0 18px rgba(255, 170, 70, 0.25);
+}
+
+.cabin-plaque p {
+  margin: 6px 0 0;
+  color: #e4cfa6;
+  max-width: 30ch;
+}
+
+/* The stern window, with the sea moving outside and the lantern hanging in front. */
+.cabin-window {
+  grid-area: window;
+  position: relative;
+  min-height: 150px;
+  aspect-ratio: 480 / 200;
+  border: 10px solid #24150a;
+  outline: 2px solid var(--brass-dark);
+  border-radius: 46% 46% 4px 4px / 22% 22% 4px 4px;
+  overflow: hidden;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* the mullions */
+.cabin-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(33.3% - 3px), #24150a calc(33.3% - 3px) calc(33.3% + 3px), transparent calc(33.3% + 3px)),
+    linear-gradient(90deg, transparent calc(66.6% - 3px), #24150a calc(66.6% - 3px) calc(66.6% + 3px), transparent calc(66.6% + 3px)),
+    linear-gradient(180deg, transparent calc(50% - 2px), rgba(36, 21, 10, 0.9) calc(50% - 2px) calc(50% + 2px), transparent calc(50% + 2px));
+}
+
+.window-view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.swell {
+  animation: window-swell 9s linear infinite;
+}
+
+.swell-2 {
+  animation-duration: 7s;
+  animation-direction: reverse;
+}
+
+.swell-3 {
+  animation-duration: 5.5s;
+}
+
+@keyframes window-swell {
+  to {
+    transform: translateX(120px);
+  }
+}
+
+.far-ship {
+  animation: far-ship 6s ease-in-out infinite;
+}
+
+@keyframes far-ship {
+  50% {
+    transform: translateY(2px) rotate(-1deg);
+  }
+}
+
+.lantern {
+  position: absolute;
+  top: -4px;
+  right: 9%;
+  width: 46px;
+  z-index: 1;
+  transform-origin: 50% 0;
+  animation: lantern-sway 5s ease-in-out infinite;
+}
+
+.lantern-art {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+}
+
+.lantern-glow {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 130px;
+  height: 130px;
+  margin: -65px 0 0 -65px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 196, 90, 0.5), transparent 65%);
+  animation: glow 2.6s ease-in-out infinite;
+}
+
+.flame {
+  transform-box: view-box;
+  transform-origin: 40px 104px;
+  animation: flame 1.3s ease-in-out infinite;
+}
+
+@keyframes lantern-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes flame {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  35% {
+    transform: scale(0.92, 1.08);
+  }
+  70% {
+    transform: scale(1.06, 0.94);
+  }
+}
+
+/* --- props: every object on the wall or the table is a button --- */
+
+.prop {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  padding: 8px;
+  color: #f3e3c0;
+  font-weight: 600;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  box-shadow: none;
+  transition: background 0.15s, border-color 0.15s, filter 0.15s;
+}
+
+.prop:hover:not([aria-disabled="true"]),
+.prop.open {
+  background: rgba(255, 196, 100, 0.1);
+  border-color: rgba(214, 169, 76, 0.7);
+  box-shadow: none;
+  filter: drop-shadow(0 0 8px rgba(255, 190, 90, 0.35));
+}
+
+.prop[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
+
+.prop-art svg {
+  display: block;
+  max-width: 100%;
+  height: 54px;
+  width: auto;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.45));
+}
+
+.prop-label {
+  font: 19px/1.1 var(--title-font);
+  color: var(--brass);
+  letter-spacing: 0.02em;
+}
+
+.prop-value {
+  font-size: 13px;
+  line-height: 1.25;
+  color: #f3e3c0;
+}
+
+/* The wanted poster on the wall: name and how to call you. */
+.poster {
+  grid-area: poster;
+  justify-self: center;
+  width: min(100%, 210px);
+  padding: 10px 12px 12px;
+  color: var(--ink);
+  border: none;
+  border-radius: 2px;
+  transform: rotate(1.8deg);
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(255, 255, 255, 0.4), transparent 55%),
+    radial-gradient(ellipse at 80% 95%, rgba(110, 60, 20, 0.35), transparent 60%),
+    linear-gradient(160deg, var(--paper), var(--paper-dark));
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* the nail */
+.poster::before {
+  content: "";
+  justify-self: center;
+  width: 9px;
+  height: 9px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f0d08a, #5a3c10);
+}
+
+.poster:hover:not([aria-disabled="true"]),
+.poster.open {
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(255, 255, 255, 0.5), transparent 55%),
+    linear-gradient(160deg, #f6e6bd, var(--paper-dark));
+  outline: 2px solid var(--brass);
+}
+
+.wanted {
+  font: 28px/1 var(--title-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5e1a10;
+}
+
+.poster-portrait svg {
+  width: 74px;
+  height: 74px;
+  display: block;
+}
+
+.poster-name {
+  font: 21px/1.1 var(--title-font);
+  overflow-wrap: anywhere;
+}
+
+.poster-reward {
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.poster .prop-label {
+  margin-top: 4px;
+  font: 700 11px/1 "Nunito", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6e4a22;
+}
+
+/* The chart: the mode selector. */
+.chart {
+  grid-area: chart;
+  position: relative;
+  align-self: start;
+  aspect-ratio: 800 / 460;
+  transform: rotate(-0.6deg);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(60, 35, 10, 0.6);
+}
+
+.chart-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.course-reveal {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: course 1.1s ease-out 0.15s forwards;
+}
+
+@keyframes course {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.course {
+  animation: course-march 1.6s linear infinite;
+}
+
+@keyframes course-march {
+  to {
+    stroke-dashoffset: -21;
+  }
+}
+
+.course-end {
+  opacity: 0;
+  animation: appear 0.3s ease-out 1.1s forwards;
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}
+
+.destination {
+  position: absolute;
+  width: 18%;
+  display: grid;
+  justify-items: center;
+  transform: translate(-50%, -62%);
+  cursor: pointer;
+  text-align: center;
+  color: var(--ink);
+}
+
+.destination input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.dest-art {
+  width: 100%;
+}
+
+.dest-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 0.2s, filter 0.2s;
+  filter: drop-shadow(0 3px 2px rgba(60, 35, 10, 0.35));
+}
+
+.dest-name {
+  margin-top: -4px;
+  padding: 1px 6px;
+  font: 700 13px/1.15 "Nunito", sans-serif;
+  background: rgba(239, 220, 174, 0.88);
+  border: 1px solid rgba(110, 83, 50, 0.6);
+  border-radius: 3px;
+}
+
+.destination:hover .dest-art svg,
+.destination:has(input:focus-visible) .dest-art svg {
+  transform: translateY(-3px) scale(1.06);
+  filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.95)) drop-shadow(0 3px 2px rgba(60, 35, 10, 0.35));
+}
+
+.destination:has(input:focus-visible) .dest-name {
+  outline: 3px solid #b5241a;
+  outline-offset: 2px;
+}
+
+.destination.chosen .dest-name {
+  color: #fff3d6;
+  background: #8a1f16;
+  border-color: #4a0e08;
+}
+
+/* the pennant marking the chosen destination */
+.destination.chosen::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 22px;
+  height: 26px;
+  background: #b5241a;
+  clip-path: polygon(0 0, 100% 25%, 12% 50%, 12% 100%, 0 100%);
+}
+
+.dest-tip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  max-width: 220px;
+  margin-top: 6px;
+  padding: 6px 9px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: #fff3d6;
+  background: rgba(30, 18, 8, 0.94);
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.destination:hover .dest-tip,
+.destination:has(input:focus-visible) .dest-tip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* The description of the chosen mode, always visible (touch has no hover). */
+.chart-note {
+  grid-area: note;
+  align-self: start;
+  margin: 0;
+  padding: 8px 12px;
+  color: #f3e3c0;
+  background: rgba(20, 12, 5, 0.55);
+  border-left: 3px solid var(--brass);
+}
+
+.chart-pick {
+  color: var(--brass);
+  font-weight: 700;
+}
+
+.spyglass {
+  grid-area: spy;
+}
+
+.spyglass .prop-art svg {
+  height: 46px;
+}
+
+.danger {
+  display: inline-flex;
+  gap: 1px;
+  vertical-align: -2px;
+  color: #e9dcc0;
+}
+
+.skull-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.props {
+  grid-area: props;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  align-content: start;
+}
+
+.props .prop-art {
+  display: flex;
+  gap: 4px;
+  align-items: end;
+  min-height: 40px;
+}
+
+.props .prop-art svg {
+  height: 40px;
+}
+
+.props .prop-art .mini-ship {
+  display: block;
+  height: 22px;
+  width: calc(var(--len) * 10px);
+}
+
+.props .prop-art .mini-ship svg,
+.model .mini-ship svg {
+  width: 100%;
+  height: 100%;
+  filter: none;
+}
+
+.props .prop-label {
+  font-size: 16px;
+}
+
+.prepare {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  font: 20px/1.1 var(--title-font);
+  color: #2a1a04;
+  background: linear-gradient(180deg, #e7c46e, var(--brass) 60%, #a77b26);
+  border: 1px solid #5a3c10;
+}
+
+.prepare small {
+  font: 600 12px/1.25 "Nunito", sans-serif;
+}
+
+.launch {
+  grid-area: launch;
+  align-self: end;
+  display: grid;
+  gap: 6px;
+}
+
+.launch #start {
+  width: 100%;
+  margin: 0;
+  font-size: 30px;
+  padding: 10px 18px;
+  border-radius: 4px;
+  border: 2px solid #5a0f08;
+  color: #fff3d6;
+  background: linear-gradient(180deg, #c8392a, #8a1f16 60%, #5e130c);
+  box-shadow: 0 3px 0 #2a0703, 0 0 22px rgba(255, 120, 60, 0.3);
+  text-shadow: 0 2px 0 #3a0905;
+}
+
+.launch #start:hover {
+  box-shadow: 0 3px 0 #2a0703, 0 0 30px rgba(255, 150, 70, 0.55);
+}
+
+.launch .error {
+  margin: 0;
+  padding: 6px 9px;
+  color: #ffd9c8;
+  background: rgba(90, 15, 8, 0.85);
+  border-radius: 3px;
+}
+
+.launch .error:empty {
+  display: none;
+}
+
+/* --- the panel a prop opens, next to it --- */
+
+.cabin-panel {
+  position: absolute;
+  z-index: 10;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  padding: 14px 16px 16px;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(255, 255, 255, 0.4), transparent 55%),
+    linear-gradient(160deg, var(--paper), var(--paper-dark));
+  border: 1px solid #5a3c10;
+  border-top: 4px solid var(--brass);
+  border-radius: 3px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+  animation: panel-in 0.16s ease-out;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.cabin-panel h3 {
+  margin: 0 28px 8px 0;
+  font: 26px/1 var(--title-font);
+  color: #5e1a10;
+}
+
+.cabin-panel h4 {
+  margin: 0 0 6px;
+  font: 19px/1 var(--title-font);
+  color: #6e4a22;
+}
+
+.panel-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.cabin-panel input,
+.cabin-panel select {
+  color: var(--ink);
+  background: rgba(255, 250, 235, 0.85);
+  border: 1px solid #8a6a3a;
+}
+
+.cabin-panel input[type="range"] {
+  flex: 1;
+  padding: 0;
+  accent-color: #8a1f16;
+  background: transparent;
+  border: none;
+}
+
+.cabin-panel .field,
+.cabin-panel .name-field label {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.cabin-panel .name-field {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.bot-note {
+  margin: -2px 0 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #4d3420;
+}
+
+.bot-danger {
+  display: inline-block;
+  margin-left: 4px;
+  font-weight: 700;
+  color: #5e1a10;
+}
+
+.bot-danger .danger {
+  color: #5e1a10;
+}
+
+.voyage-part {
+  padding: 10px 0;
+  border-top: 1px dashed rgba(90, 55, 20, 0.4);
+}
+
+.voyage-part:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.models {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.model {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.model .mini-ship {
+  display: block;
+  height: 20px;
+  width: calc(var(--len) * 17px);
+  max-width: 100%;
+}
+
+.model-length {
+  min-width: 1.4em;
+  font-weight: 900;
+  text-align: center;
+}
+
+button.tiny {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+button.tiny.wide {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.range-row output {
+  min-width: 4.2em;
+  font-weight: 900;
+}
+
+.winds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wind {
+  position: relative;
+  flex: 1;
+  min-width: 90px;
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13.5px;
+  white-space: nowrap;
+  border: 1px solid #8a6a3a;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.wind input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.wind.chosen {
+  color: #fff3d6;
+  background: #6d4812;
+  border-color: #3b2a10;
+}
+
+.wind:has(input:focus-visible) {
+  outline: 3px solid #b5241a;
+  outline-offset: 2px;
+}
+
+.compass-art .needle {
+  transform-box: view-box;
+  transform-origin: 50px 50px;
+  transition: transform 0.6s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+/* --- leaving the cabin: the camera dives through the window into the sea --- */
+
+.cabin.embarking {
+  transform: scale(1.35) translateY(8%);
+  opacity: 0;
+  filter: blur(2px) brightness(1.3);
+}
+
+.embark-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: linear-gradient(180deg, #f5cf86 0%, #2f6e98 40%, #0a2744 100%);
+  clip-path: circle(0% at 50% 30%);
+  animation: veil-in 0.62s ease-in forwards;
+}
+
+.embark-veil.open {
+  animation: veil-out 0.55s ease-out forwards;
+}
+
+@keyframes veil-in {
+  to {
+    clip-path: circle(150% at 50% 30%);
+  }
+}
+
+@keyframes veil-out {
+  from {
+    clip-path: circle(150% at 50% 30%);
+    opacity: 1;
+  }
+  to {
+    clip-path: circle(150% at 50% 30%);
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(30%);
+    opacity: 0;
+  }
+}
+
+/* --- the cabin on tablets and phones --- */
+
+@media (max-width: 900px) {
+  .cabin {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "plaque plaque"
+      "window window"
+      "poster spy"
+      "chart chart"
+      "note note"
+      "props props"
+      "launch launch";
+    grid-template-rows: none;
+    padding: 14px;
+  }
+
+  .tabletop {
+    grid-row: 3 / -1;
+    margin: -6px -14px -14px;
+  }
+
+  .cabin-window {
+    min-height: 0;
+  }
+
+  .poster {
+    width: min(100%, 190px);
+  }
+
+  .props {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .prepare {
+    grid-column: 1 / -1;
+  }
+
+  .launch {
+    position: sticky;
+    bottom: 8px;
+    z-index: 5;
+  }
+}
+
+@media (max-width: 560px) {
+  .cabin {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .tabletop {
+    margin: -6px -12px -12px;
+  }
+
+  .cabin-plaque h2 {
+    font-size: 36px;
+  }
+
+  .props {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .destination {
+    width: 24%;
+  }
+
+  .dest-name {
+    font-size: 11px;
+    padding: 1px 3px;
+  }
+
+  .destination.chosen::before {
+    width: 16px;
+    height: 20px;
+  }
+
+  .launch #start {
+    font-size: 26px;
+  }
+
+  /* on phones the panels come up from the bottom, like a sheet */
+  .cabin-panel {
+    position: fixed;
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: auto !important;
+    max-height: 75vh;
+    border-radius: 8px 8px 0 0;
+    animation-name: sheet-in;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cabin,
+  .cabin *,
+  .cabin *::before,
+  .embark-veil {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .course-reveal {
+    stroke-dashoffset: 0;
+  }
+
+  .course-end {
+    opacity: 1;
+  }
 }
