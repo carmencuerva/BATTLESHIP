@@ -2850,3 +2850,79 @@ body.dragging-ship * {
     margin-top: 14px;
   }
 }
+
+/* --- sound controls in the header ---------------------------------------------------------- */
+
+.top {
+  position: relative;
+}
+
+/* Sound is off: a small musical note pulses on the switch. */
+#sound.muted-hint {
+  position: relative;
+}
+
+#sound.muted-hint::after {
+  content: "♪";
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  font-size: 14px;
+  color: var(--gold);
+  text-shadow: 0 1px 0 var(--wood-dark);
+  animation: note-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes note-pulse {
+  50% {
+    transform: translateY(-3px) scale(1.25);
+    opacity: 0.6;
+  }
+}
+
+.levels-panel {
+  position: absolute;
+  right: 16px;
+  top: calc(100% + 6px);
+  z-index: 85;
+  display: grid;
+  gap: 10px;
+  min-width: 230px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.levels-panel[hidden] {
+  display: none;
+}
+
+.levels-panel label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.levels-panel input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.levels-hint {
+  margin: 0;
+  max-width: 230px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.levels-hint:empty {
+  display: none;
+}
+
+.levels-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}

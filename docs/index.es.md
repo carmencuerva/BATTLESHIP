@@ -19,7 +19,12 @@ navegador gracias a [Pyodide](https://pyodide.org).
 - **Sonido**: apagado hasta que lo enciendes con 🔊 (la web recuerda tu elección). Entonces
   el loro grazna (un graznido sintetizado por la propia web) y dice su frase con voz grave,
   usando las voces de tu dispositivo; si no hay voz para el idioma, solo grazna. Su tono,
-  su velocidad y el graznido son constantes al principio de `web/js/sound.js`. Si tu sistema tiene activado *reducir movimiento*, las animaciones grandes se
+  su velocidad y el graznido son constantes al principio de `web/js/sound.js`.
+- **Música**: una canción de marineros propia en 6/8, compuesta para el juego y tocada en
+  directo por la web (`web/js/music.js`, sin grabaciones). Empieza tras tu primer clic con
+  el sonido encendido, sigue al cambiar de pantalla, baja mientras habla el loro y se pausa
+  si la pestaña está oculta. El botón de deslizadores junto a 🔊 ajusta el volumen de la
+  música y del loro (se recuerda). Si tu sistema tiene activado *reducir movimiento*, las animaciones grandes se
   quedan quietas.
 - **Clasificación**: la pestaña *Clasificación* de la web muestra el último torneo oficial.
 - **Escribe tu propio bot**: mira [Escribe un bot](write-a-bot.md). Necesitas un único

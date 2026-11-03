@@ -19,7 +19,11 @@ the same code plays the official tournament in CI and runs in your browser via
 - **Sound**: off until you turn it on with 🔊 (the page remembers your choice). The parrot
   then squawks (synthesised by the page) and says its line in a low voice, using your
   device's voices; with no voice for the language it only squawks. Its pitch, speed and
-  squawk are constants at the top of `web/js/sound.js`. With *reduce motion* switched on in your system, the big animations stay
+  squawk are constants at the top of `web/js/sound.js`.
+- **Music**: an original sea shanty in 6/8, composed for the game and played live by the
+  page (`web/js/music.js`, no recordings). It starts after your first click with sound on,
+  carries on across screens, quietens while the parrot speaks and pauses in a hidden tab.
+  The slider button next to 🔊 sets the music and parrot volumes (remembered). With *reduce motion* switched on in your system, the big animations stay
   still.
 - **Ranking**: the *Ranking* tab of the page shows the latest official tournament.
 - **Write your own bot**: see [Write a bot](write-a-bot.md). You need a single Python file

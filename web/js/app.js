@@ -12,7 +12,8 @@ import { leaderboardHtml, stageName } from "./leaderboard.js";
 import { createParrot } from "./parrot.js";
 import { lineForEnd, lineForShot, lineForStart } from "./parrot-lines.js";
 import { miniShip } from "./ships.js";
-import { isMuted, setMuted, sfx } from "./sound.js";
+import { updateMusic } from "./music.js";
+import { getLevel, isMuted, setLevel, setMuted, sfx } from "./sound.js";
 import { load, save } from "./store.js";
 
 const app = document.getElementById("app");
@@ -77,13 +78,40 @@ function renderHeader() {
   const sound = document.getElementById("sound");
   sound.textContent = isMuted() ? "🔇" : "🔊";
   sound.title = t(isMuted() ? "sound_on" : "sound_off");
+  sound.setAttribute("aria-label", sound.title);
   sound.setAttribute("aria-pressed", String(!isMuted()));
+  sound.classList.toggle("muted-hint", isMuted()); // a little note pulses: sound is off
+  const levels = document.getElementById("levels");
+  levels.title = t("levels_title");
+  levels.setAttribute("aria-label", levels.title);
+  document.getElementById("level-music-label").textContent = t("level_music");
+  document.getElementById("level-voice-label").textContent = t("level_voice");
+  document.getElementById("level-music").value = Math.round(getLevel("music") * 100);
+  document.getElementById("level-voice").value = Math.round(getLevel("voice") * 100);
+  document.getElementById("levels-hint").textContent = isMuted() ? t("levels_muted") : "";
 }
 
+// The general switch (also starts the music, see music.js) and the two sliders.
 document.getElementById("sound").addEventListener("click", () => {
   setMuted(!isMuted());
   renderHeader();
 });
+const levelsPanel = document.getElementById("levels-panel");
+const levelsButton = document.getElementById("levels");
+function openLevels(open) {
+  levelsPanel.hidden = !open;
+  levelsButton.setAttribute("aria-expanded", String(open));
+}
+levelsButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  openLevels(levelsPanel.hidden);
+});
+levelsPanel.addEventListener("click", (event) => event.stopPropagation());
+document.addEventListener("click", () => openLevels(false));
+document.addEventListener("keydown", (event) => event.key === "Escape" && openLevels(false));
+for (const kind of ["music", "voice"]) {
+  document.getElementById(`level-${kind}`).addEventListener("input", (event) => setLevel(kind, event.target.value / 100));
+}
 document.getElementById("lang").addEventListener("click", () => {
   setLang(getLang() === "es" ? "en" : "es");
   renderHeader();
@@ -1231,6 +1259,7 @@ function gameScreen() {
 async function boot() {
   setLang(getLang());
   renderHeader();
+  updateMusic(); // silent until the first click with sound on
   const loading = (key) => {
     current = () => loading(key);
     app.innerHTML = `<div class="loading"><div class="spinner"></div><p>${th(key)}</p></div>`;

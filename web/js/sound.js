@@ -41,14 +41,58 @@ const SQUAWK_MAKEUP = 2.8;
 let ctx = null;
 let master = null;
 let voiceBus = null; // the parrot's squawks go through here (its own volume)
+let musicBus = null; // the background music (its own volume)…
+let duckBus = null; // …lowered while the parrot speaks
 let noise = null;
 let pendingWords = null; // the words waiting for their squawk to finish
 let muted = load("sound", "off") !== "on"; // silent until the player turns it on
 let unlocked = false;
 
+// The two sliders of the sound panel, 0..1, remembered (store.js forgets quietly).
+const levels = { music: 0.35, voice: 0.85, ...load("levels", {}) };
+
+// Listeners: someone (music.js) wants to know when sound is turned on/off, unlocked or
+// re-levelled, and when the parrot starts and stops talking (to lower the music).
+const changeListeners = new Set();
+const parrotListeners = new Set();
+export function onSoundChange(fn) {
+  changeListeners.add(fn);
+}
+export function onParrot(fn) {
+  parrotListeners.add(fn);
+}
+const changed = () => changeListeners.forEach((fn) => fn());
+const parrotIs = (state) => parrotListeners.forEach((fn) => fn(state));
+
 // The first real gesture unlocks audio; until then every sound is a no-op.
 export function unlock() {
+  if (unlocked) return;
   unlocked = true;
+  changed();
+}
+
+export function isUnlocked() {
+  return unlocked;
+}
+
+export function getLevel(kind) {
+  return levels[kind];
+}
+
+export function setLevel(kind, value) {
+  levels[kind] = Math.min(1, Math.max(0, Number(value) || 0));
+  save("levels", levels);
+  if (kind === "voice" && voiceBus) voiceBus.gain.value = levels.voice;
+  if (kind === "music" && musicBus) musicBus.gain.value = levels.music;
+  changed();
+}
+
+// The music's way into the speakers, creating the audio graph if allowed (after a
+// gesture, sound on). null otherwise. {ctx, out, duck}: play into `out`; `duck` is the
+// gain lowered while the parrot speaks.
+export function musicOutput() {
+  const ac = audio();
+  return ac ? { ctx: ac, out: musicBus, duck: duckBus } : null;
 }
 for (const type of ["pointerdown", "keydown"]) {
   globalThis.addEventListener?.(type, unlock, { once: true, capture: true });
@@ -66,6 +110,7 @@ export function setMuted(value) {
     clearTimeout(pendingWords);
     globalThis.speechSynthesis?.cancel?.();
   }
+  changed();
 }
 
 function pickVoice(synth, lang) {
@@ -88,7 +133,8 @@ function sayWords(text, lang) {
     line.lang = voice.lang;
     line.pitch = PARROT_VOICE.pitch;
     line.rate = PARROT_VOICE.rate;
-    line.volume = PARROT_VOICE.volume;
+    line.volume = PARROT_VOICE.volume * levels.voice;
+    line.onend = line.onerror = () => parrotIs("quiet");
     synth.speak(line);
     return true;
   } catch {
@@ -102,11 +148,16 @@ function sayWords(text, lang) {
 export function parrotSay(text, lang) {
   const result = { squawk: false, words: false };
   if (muted || !unlocked || !text) return result;
+  parrotIs("talking"); // the music steps aside
   result.squawk = squawk();
   const synth = globalThis.speechSynthesis;
   result.words = Boolean(synth && globalThis.SpeechSynthesisUtterance && pickVoice(synth, lang));
   clearTimeout(pendingWords);
-  if (result.words) pendingWords = setTimeout(() => sayWords(text, lang), PARROT_VOICE.afterSquawk * 1000);
+  if (result.words) {
+    pendingWords = setTimeout(() => sayWords(text, lang) || parrotIs("quiet"), PARROT_VOICE.afterSquawk * 1000);
+  } else {
+    pendingWords = setTimeout(() => parrotIs("quiet"), 700); // just the squawk
+  }
   return result;
 }
 
@@ -120,8 +171,13 @@ function audio() {
     master.gain.value = 0.5;
     master.connect(ctx.destination);
     voiceBus = ctx.createGain();
-    voiceBus.gain.value = 1;
+    voiceBus.gain.value = levels.voice;
     voiceBus.connect(master);
+    musicBus = ctx.createGain();
+    musicBus.gain.value = levels.music;
+    duckBus = ctx.createGain();
+    duckBus.gain.value = 1;
+    musicBus.connect(duckBus).connect(master);
     noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
