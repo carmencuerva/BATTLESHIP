@@ -34,7 +34,10 @@ test("renderBoard draws size² cells with their states", () => {
   assert.equal(count(box.innerHTML, "cell miss"), 1);
   assert.equal(count(box.innerHTML, "cell hit"), 1);
   assert.equal(count(box.innerHTML, "cell sunk"), 1);
-  assert.equal(count(box.innerHTML, 'class="flame"'), 1); // fire only where a ship is hit
+  // one mark per shot: rings on water, a red X on a hit, a dark X on a sunk ship's cell
+  assert.equal(count(box.innerHTML, 'class="mark water"'), 1);
+  assert.equal(count(box.innerHTML, 'class="mark hit-x"'), 1);
+  assert.equal(count(box.innerHTML, 'class="mark sunk-x"'), 1);
   assert.equal(count(box.innerHTML, " clickable"), size * size - 3); // only unknown cells
   assert.match(box.innerHTML, /grid-template-columns:repeat\(4, var\(--cell\)\)/);
   // Board-game labels, sized to the board: letters A-D on top, numbers 1-4 on the side.

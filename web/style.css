@@ -744,101 +744,103 @@ input[type="radio"] {
 }
 
 /* --- shot marks ------------------------------------------------------------------------- */
+/* Water: pale rings on the sea. Hit: a bright red painted X. Sunk: every cell of the ship
+   gets a dark, burnt X on a scorched cell, with the wreck showing underneath. */
 
-.splash-dot {
-  width: 34%;
-  height: 34%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffffff, #bfe6ff 55%, #6fb8ec);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25), 0 0 8px rgba(160, 220, 255, 0.7);
+.mark {
+  width: 74%;
+  height: 74%;
+  overflow: visible;
 }
 
-.cell.miss.fresh .splash-dot {
-  animation: dot-pop 0.5s cubic-bezier(0.2, 1.7, 0.4, 1) both;
+.mark.water .ring {
+  fill: none;
+  stroke: rgba(225, 244, 255, 0.85);
+  stroke-width: 2.2;
 }
 
-@keyframes dot-pop {
+.mark.water .r1 {
+  stroke-opacity: 0.45;
+}
+
+.mark.water .drop {
+  fill: #f2fbff;
+}
+
+.cell.miss.fresh .mark.water .ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ripple 0.7s ease-out both;
+}
+
+@keyframes ripple {
   from {
-    transform: scale(0);
+    transform: scale(0.2);
+    opacity: 0;
   }
+}
+
+.mark .x-edge,
+.mark .x-paint,
+.mark .x-shine {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.mark .x-edge {
+  stroke: #2a0703;
+  stroke-width: 9.5;
+}
+
+.mark .x-paint {
+  stroke: #e3261a;
+  stroke-width: 6;
+}
+
+.mark .x-shine {
+  stroke: #ff9b7a;
+  stroke-width: 1.8;
+  opacity: 0.8;
 }
 
 .cell.hit {
-  background: radial-gradient(circle at 50% 70%, rgba(255, 120, 40, 0.45), rgba(80, 20, 0, 0.25) 70%);
+  background: radial-gradient(circle, rgba(255, 70, 40, 0.32), rgba(120, 10, 0, 0.12) 70%);
 }
 
-.flame {
-  width: 78%;
-  height: 92%;
-  margin-top: -14%;
-  overflow: visible;
-  transform-origin: 50% 100%;
-  animation: flicker 0.45s ease-in-out infinite alternate;
-  filter: drop-shadow(0 0 5px rgba(255, 140, 30, 0.9));
+.mark.hit-x {
+  filter: drop-shadow(0 0 4px rgba(255, 60, 30, 0.75));
 }
 
-.flame .f-mid {
-  transform-origin: 50% 100%;
-  transform-box: fill-box;
-  animation: flicker-in 0.3s ease-in-out infinite alternate;
+.cell.hit.fresh .mark.hit-x,
+.cell.sunk.fresh .mark.sunk-x {
+  animation: x-in 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both;
 }
 
-.cell.hit:nth-child(2n) .flame {
-  animation-delay: -0.2s;
-}
-
-.cell.hit.fresh .flame {
-  animation: flame-in 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) both, flicker 0.45s 0.45s ease-in-out infinite alternate;
-}
-
-/* a thin wisp of smoke above each fire */
-.cell.hit::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -10%;
-  width: 40%;
-  height: 40%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(70, 70, 80, 0.55), transparent 70%);
-  animation: wisp 1.8s ease-out infinite;
-  pointer-events: none;
-}
-
-@keyframes flicker {
+@keyframes x-in {
   from {
-    transform: scale(1, 1) skewX(0deg);
-  }
-  to {
-    transform: scale(1.06, 0.9) skewX(4deg);
-  }
-}
-
-@keyframes flicker-in {
-  to {
-    transform: scaleY(0.82);
-  }
-}
-
-@keyframes flame-in {
-  from {
-    transform: scale(0);
-  }
-}
-
-@keyframes wisp {
-  from {
-    transform: translate(-50%, 0) scale(0.6);
-    opacity: 0.8;
-  }
-  to {
-    transform: translate(-30%, -90%) scale(1.6);
+    transform: scale(1.8) rotate(-12deg);
     opacity: 0;
   }
 }
 
 .cell.sunk {
-  background: rgba(0, 10, 25, 0.35);
+  background:
+    radial-gradient(circle, rgba(40, 8, 4, 0.55), rgba(20, 4, 2, 0.35) 75%),
+    rgba(0, 10, 25, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(140, 30, 20, 0.6);
+}
+
+.mark.sunk-x .x-edge {
+  stroke: #120302;
+}
+
+.mark.sunk-x .x-paint {
+  stroke: #6e130c;
+}
+
+.mark.sunk-x .x-shine {
+  stroke: #b8452e;
+  opacity: 0.6;
 }
 
 /* --- crosshair -------------------------------------------------------------------------- */
@@ -3157,7 +3159,7 @@ body.in-cabin main {
   animation: glow 2.6s ease-in-out infinite;
 }
 
-.flame {
+.lantern .flame {
   transform-box: fill-box;
   transform-origin: 50% 80%;
   animation: flame 1.3s ease-in-out infinite;
