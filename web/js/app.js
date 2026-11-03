@@ -91,6 +91,43 @@ function renderHeader() {
   document.getElementById("levels-hint").textContent = isMuted() ? t("levels_muted") : "";
 }
 
+// The sound switch, the volume button and its panel normally come with index.html. A
+// browser that kept an older cached index.html would not have them, and the page must not
+// stop for that: create whatever is missing.
+function ensureSoundControls() {
+  const nav = document.querySelector(".top nav");
+  const lang = document.getElementById("lang");
+  if (!document.getElementById("sound")) {
+    const sound = document.createElement("button");
+    sound.id = "sound";
+    nav.insertBefore(sound, lang);
+  }
+  if (!document.getElementById("levels")) {
+    const levels = document.createElement("button");
+    levels.id = "levels";
+    levels.setAttribute("aria-expanded", "false");
+    levels.setAttribute("aria-controls", "levels-panel");
+    levels.innerHTML = `<svg class="levels-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55" />
+      <rect x="2.5" y="12" width="5" height="3.4" rx="1.2" fill="currentColor" />
+      <rect x="9.5" y="6" width="5" height="3.4" rx="1.2" fill="currentColor" />
+      <rect x="16.5" y="14.5" width="5" height="3.4" rx="1.2" fill="currentColor" /></svg>`;
+    nav.insertBefore(levels, lang);
+  }
+  if (!document.getElementById("levels-panel")) {
+    const panel = document.createElement("div");
+    panel.id = "levels-panel";
+    panel.className = "levels-panel";
+    panel.hidden = true;
+    panel.innerHTML = `
+      <label><span id="level-music-label"></span><input id="level-music" type="range" min="0" max="100" step="5" /></label>
+      <label><span id="level-voice-label"></span><input id="level-voice" type="range" min="0" max="100" step="5" /></label>
+      <p id="levels-hint" class="levels-hint"></p>`;
+    document.querySelector(".top").appendChild(panel);
+  }
+}
+ensureSoundControls();
+
 // The general switch (also starts the music, see music.js) and the two sliders.
 document.getElementById("sound").addEventListener("click", () => {
   setMuted(!isMuted());
