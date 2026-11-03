@@ -366,21 +366,12 @@ const effects = {
       tone({ freq: f, to: f * 1.8, dur: 0.07, peak: 0.12, delay: 0.4 + i * 0.16 + Math.random() * 0.08 });
     }
   },
-  victory() {
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C E G C
-    notes.forEach((f, i) => tone({ freq: f, dur: 0.22, type: "square", peak: 0.12, delay: i * 0.13 }));
-    for (const f of [523.25, 659.25, 783.99]) tone({ freq: f, dur: 1.4, type: "triangle", peak: 0.12, delay: 0.55 });
+  // Gold coins clinking (the end-of-game fanfare itself is music, see music.js).
+  coins() {
     for (let i = 0; i < 10; i++) {
-      const f = 2200 + Math.random() * 1500; // coins
-      tone({ freq: f, to: f * 1.02, dur: 0.12, peak: 0.08, delay: 0.7 + i * 0.18 + Math.random() * 0.1 });
+      const f = 2200 + Math.random() * 1500;
+      tone({ freq: f, to: f * 1.02, dur: 0.12, peak: 0.07, delay: 0.5 + i * 0.18 + Math.random() * 0.1 });
     }
-  },
-  defeat() {
-    // A sad descending "wah wah wah wah".
-    [392, 370, 349, 311].forEach((f, i) =>
-      tone({ freq: f, to: f * 0.94, dur: i === 3 ? 1.1 : 0.42, type: "sawtooth", peak: 0.09, delay: 0.3 + i * 0.45 }),
-    );
-    effects.thunder(0);
   },
   thunder(delay = 0.15) {
     hiss({ dur: 2.4, filter: "lowpass", freq: 600, to: 60, peak: 0.6, delay });

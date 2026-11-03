@@ -26,10 +26,12 @@ navegador gracias a [Pyodide](https://pyodide.org).
   viva y algo aguda que cambia según el momento (emoción, preocupación, tristeza…), usando
   la voz más natural de tu dispositivo; si no hay voz para el idioma, solo grazna. Su voz,
   sus estados de ánimo y sus graznidos son constantes al principio de `web/js/sound.js`.
-- **Música**: una canción de marineros propia en 6/8, compuesta para el juego y tocada en
-  directo por la web (`web/js/music.js`, sin grabaciones). Empieza tras tu primer clic con
-  el sonido encendido, sigue al cambiar de pantalla, baja mientras habla el loro y se pausa
-  si la pestaña está oculta. El botón de deslizadores junto a 🔊 ajusta el volumen de la
+- **Música**: piezas propias compuestas para el juego y tocadas en directo por la web
+  (`web/js/music.js`, sin grabaciones): una canción de marineros en 6/8 para los menús y la
+  colocación de la flota, una pieza épica con tambores de guerra y metales durante la
+  batalla, y una fanfarria o un lamento al terminar. Cada una se funde con la siguiente,
+  nunca suenan dos a la vez. Empieza tras tu primer clic con el sonido encendido, baja
+  mientras habla el loro y se pausa si la pestaña está oculta. El botón de deslizadores junto a 🔊 ajusta el volumen de la
   música y del loro (se recuerda). Si tu sistema tiene activado *reducir movimiento*, las animaciones grandes se
   quedan quietas.
 - **Clasificación**: la pestaña *Clasificación* de la web muestra el último torneo oficial.

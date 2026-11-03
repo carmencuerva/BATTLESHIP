@@ -26,9 +26,11 @@ the same code plays the official tournament in CI and runs in your browser via
   that changes with the moment (thrilled, worried, sad…), using your device's most natural
   voice; with no voice for the language it only squawks. Its voice, its moods and its
   squawks are constants at the top of `web/js/sound.js`.
-- **Music**: an original sea shanty in 6/8, composed for the game and played live by the
-  page (`web/js/music.js`, no recordings). It starts after your first click with sound on,
-  carries on across screens, quietens while the parrot speaks and pauses in a hidden tab.
+- **Music**: original pieces composed for the game and played live by the page
+  (`web/js/music.js`, no recordings): a sea shanty in 6/8 for the menus and placing your
+  fleet, an epic piece with war drums and brass during the battle, and a fanfare or a
+  lament at the end. Each fades into the next, never two at once. It starts after your
+  first click with sound on, quietens while the parrot speaks and pauses in a hidden tab.
   The slider button next to 🔊 sets the music and parrot volumes (remembered). With *reduce motion* switched on in your system, the big animations stay
   still.
 - **Ranking**: the *Ranking* tab of the page shows the latest official tournament.

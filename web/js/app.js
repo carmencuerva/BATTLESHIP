@@ -32,7 +32,7 @@ import { leaderboardHtml, stageName } from "./leaderboard.js";
 import { createParrot } from "./parrot.js";
 import { lineForEnd, lineForLoss, lineForShot, lineForTurn } from "./parrot-lines.js";
 import { miniShip } from "./ships.js";
-import { updateMusic } from "./music.js";
+import { setMusic, updateMusic } from "./music.js";
 import { getLevel, isMuted, setLevel, setMuted, sfx } from "./sound.js";
 import { load, save } from "./store.js";
 
@@ -78,6 +78,8 @@ function show(render) {
   current = render;
   keyHandler = null;
   document.body.classList.toggle("in-cabin", render === menuScreen); // the cabin fills the screen
+  // the shanty everywhere except during a battle and at its end (see gameScreen, finishGame)
+  if (!match || match.attacker == null) setMusic("shanty");
   render();
   scrollTo(0, 0); // a new screen starts at its top, not where the last one was scrolled to
 }
@@ -1448,6 +1450,7 @@ function finishGame(delay) {
   const m = match;
   if (m.endShown) return; // exactly one end sequence per match
   m.endShown = true;
+  setMusic(endKind(m)); // the battle music gives way to the fanfare or the lament
   setTimeout(() => {
     if (match === m) showEnd(m);
   }, delay);
@@ -1552,6 +1555,7 @@ function flyHat(fromRect, toHat) {
 function gameScreen() {
   const built = ensureLayout();
   const { sides, mode, over } = match;
+  if (!over) setMusic("battle");
   const { me, left, right } = boardSides();
   const status = sides.map((side) => (side.board ? arena.call("status", side.board) : null));
 
