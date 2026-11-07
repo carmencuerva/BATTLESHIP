@@ -2,7 +2,7 @@
   "format": "league",
   "config": {
     "format": "league",
-    "games_per_pair": 20,
+    "games_per_pair": 100,
     "seed": 0,
     "size": 10,
     "fleet": [
@@ -17,6 +17,28 @@
   },
   "standings": [
     {
+      "name": "lucia",
+      "authors": [
+        "Lucía Argüello"
+      ],
+      "description": "Counts every ship position the no-touch rule allows; learns during the game whether you hide along the edges. Fleet hidden, never the same.",
+      "icon": "🐬",
+      "source": "custom/lucia_bot.py",
+      "points": 351.0,
+      "elo": 2096.9,
+      "played": 400,
+      "wins": 351,
+      "losses": 49,
+      "draws": 0,
+      "forfeits": 0,
+      "forfeit_reasons": {},
+      "wins_first": 177,
+      "wins_second": 174,
+      "avg_shots_to_win": 38.5,
+      "hit_rate": 0.434,
+      "rank": 1
+    },
+    {
       "name": "hard",
       "authors": [
         "Battleship Arena"
@@ -24,40 +46,18 @@
       "description": "Hides its fleet where hunters look least; shoots the most likely cell.",
       "icon": "🧠",
       "source": "builtin/hard_bot.py",
-      "points": 66.0,
-      "elo": 1735.7,
-      "played": 80,
-      "wins": 66,
-      "losses": 14,
+      "points": 300.0,
+      "elo": 1963.0,
+      "played": 400,
+      "wins": 300,
+      "losses": 100,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 35,
-      "wins_second": 31,
-      "avg_shots_to_win": 38.2,
-      "hit_rate": 0.427,
-      "rank": 1
-    },
-    {
-      "name": "lucia",
-      "authors": [
-        "Lucía Argüello"
-      ],
-      "description": "Skips water the no-touch rule gives away; hunts where the longest ship fits.",
-      "icon": "🐬",
-      "source": "custom/lucia_bot.py",
-      "points": 67.0,
-      "elo": 1733.3,
-      "played": 80,
-      "wins": 67,
-      "losses": 13,
-      "draws": 0,
-      "forfeits": 0,
-      "forfeit_reasons": {},
-      "wins_first": 35,
-      "wins_second": 32,
-      "avg_shots_to_win": 42.4,
-      "hit_rate": 0.389,
+      "wins_first": 151,
+      "wins_second": 149,
+      "avg_shots_to_win": 37.9,
+      "hit_rate": 0.426,
       "rank": 2
     },
     {
@@ -65,21 +65,21 @@
       "authors": [
         "Battleship Arena"
       ],
-      "description": "Random fleet; hunts on a parity grid, then finishes every ship it hits.",
+      "description": "Random fleet; hunts on a parity grid, finishes every ship it hits, skips proven water.",
       "icon": "🎯",
       "source": "builtin/medium_bot.py",
-      "points": 47.0,
-      "elo": 1532.0,
-      "played": 80,
-      "wins": 47,
-      "losses": 33,
+      "points": 249.0,
+      "elo": 1829.6,
+      "played": 400,
+      "wins": 249,
+      "losses": 151,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 24,
-      "wins_second": 23,
-      "avg_shots_to_win": 51.2,
-      "hit_rate": 0.329,
+      "wins_first": 127,
+      "wins_second": 122,
+      "avg_shots_to_win": 43.1,
+      "hit_rate": 0.376,
       "rank": 3
     },
     {
@@ -90,18 +90,18 @@
       "description": "Random fleet; shoots row by row, left to right.",
       "icon": "🐣",
       "source": "builtin/easy_bot.py",
-      "points": 16.0,
-      "elo": 1384.2,
-      "played": 80,
-      "wins": 16,
-      "losses": 64,
+      "points": 68.0,
+      "elo": 870.0,
+      "played": 400,
+      "wins": 68,
+      "losses": 332,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 9,
-      "wins_second": 7,
-      "avg_shots_to_win": 83.9,
-      "hit_rate": 0.196,
+      "wins_first": 36,
+      "wins_second": 32,
+      "avg_shots_to_win": 85.9,
+      "hit_rate": 0.189,
       "rank": 4
     },
     {
@@ -112,18 +112,18 @@
       "description": "Random fleet; shoots any unshot cell at random. The baseline.",
       "icon": "🎲",
       "source": "builtin/random_bot.py",
-      "points": 4.0,
-      "elo": 1114.8,
-      "played": 80,
-      "wins": 4,
-      "losses": 76,
+      "points": 32.0,
+      "elo": 740.5,
+      "played": 400,
+      "wins": 32,
+      "losses": 368,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 3,
-      "wins_second": 1,
-      "avg_shots_to_win": 97.5,
-      "hit_rate": 0.168,
+      "wins_first": 18,
+      "wins_second": 14,
+      "avg_shots_to_win": 94.8,
+      "hit_rate": 0.167,
       "rank": 5
     }
   ],
@@ -132,73 +132,73 @@
       "a": "easy",
       "b": "hard",
       "wins_a": 0,
-      "wins_b": 20,
+      "wins_b": 100,
       "draws": 0
     },
     {
       "a": "easy",
       "b": "lucia",
       "wins_a": 0,
-      "wins_b": 20,
+      "wins_b": 100,
       "draws": 0
     },
     {
       "a": "easy",
       "b": "medium",
       "wins_a": 0,
-      "wins_b": 20,
+      "wins_b": 100,
       "draws": 0
     },
     {
       "a": "easy",
       "b": "random",
-      "wins_a": 16,
-      "wins_b": 4,
+      "wins_a": 68,
+      "wins_b": 32,
       "draws": 0
     },
     {
       "a": "hard",
       "b": "lucia",
-      "wins_a": 11,
-      "wins_b": 9,
+      "wins_a": 30,
+      "wins_b": 70,
       "draws": 0
     },
     {
       "a": "hard",
       "b": "medium",
-      "wins_a": 15,
-      "wins_b": 5,
+      "wins_a": 70,
+      "wins_b": 30,
       "draws": 0
     },
     {
       "a": "hard",
       "b": "random",
-      "wins_a": 20,
+      "wins_a": 100,
       "wins_b": 0,
       "draws": 0
     },
     {
       "a": "lucia",
       "b": "medium",
-      "wins_a": 18,
-      "wins_b": 2,
+      "wins_a": 81,
+      "wins_b": 19,
       "draws": 0
     },
     {
       "a": "lucia",
       "b": "random",
-      "wins_a": 20,
+      "wins_a": 100,
       "wins_b": 0,
       "draws": 0
     },
     {
       "a": "medium",
       "b": "random",
-      "wins_a": 20,
+      "wins_a": 100,
       "wins_b": 0,
       "draws": 0
     }
   ],
   "rejected": [],
-  "generated_at": "2026-11-01T16:11:01+00:00"
+  "generated_at": "2026-11-07T17:16:31+00:00"
 }

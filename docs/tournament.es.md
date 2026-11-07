@@ -1,7 +1,7 @@
 # Torneo
 
 ```bash
-battleship-tournament [--format league|simple|championship] [--games 20] [--seed 0]
+battleship-tournament [--format league|simple|championship] [--games 100] [--seed 0]
                       [--knockout-games 10] [--top 4]
                       [--size 10] [--fleet 5,4,3,3,2]
                       [--time-budget 2] [--build-budget 2]
@@ -11,14 +11,19 @@ battleship-tournament [--format league|simple|championship] [--games 20] [--seed
 ## Formato
 
 - **Liguilla (todos contra todos):** cada pareja de jugadores admitidos juega `--games`
-  partidas (20 por defecto).
+  partidas (100 por defecto; con menos, el orden entre jugadores parecidos depende
+  mucho del azar).
 - **Parejas espejo:** las partidas `2k` y `2k+1` de una pareja usan las mismas semillas
   (y, por tanto, las mismas flotas para los bots con semilla), y cada jugador empieza una vez.
 - **Reproducible:** las semillas de cada partida dependen solo de la semilla del torneo y
   de los dos nombres. Añadir un jugador nuevo no cambia las partidas entre los demás.
 - **Clasificación:**
-    - `league` (por defecto) ordena por **Elo**. Todos empiezan en 1500, K = 32, y las
-      partidas se procesan en el orden del calendario.
+    - `league` (por defecto) ordena por una **puntuación en escala Elo** ajustada a todas
+      las partidas a la vez (el ajuste de máxima verosimilitud del modelo de Elo, también
+      llamado Bradley-Terry; ver `src/battleship/elo.py`). 400 puntos de diferencia son
+      apuestas de 10 a 1; la media es 1500. A diferencia de actualizar el Elo partida a
+      partida, no depende del orden de las partidas y, en una liga, más puntos significan
+      siempre más puntuación.
     - `simple` ordena por **puntos**: 1 por victoria, ½ por empate.
     - Los empates se deshacen por menos abandonos y después por nombre.
 
@@ -62,14 +67,14 @@ Si los dos bots fallan al construirse o al colocar, la partida es empate.
 ```json
 {
   "format": "league",
-  "config": {"games_per_pair": 20, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
+  "config": {"games_per_pair": 100, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
   "standings": [
-    {"rank": 1, "name": "hard", "icon": "🧠", "elo": 1735.7, "points": 66.0,
-     "played": 80, "wins": 66, "losses": 14, "draws": 0, "forfeits": 0,
-     "forfeit_reasons": {}, "wins_first": 35, "wins_second": 31,
-     "avg_shots_to_win": 38.2, "hit_rate": 0.427, ...}
+    {"rank": 1, "name": "lucia", "icon": "🐬", "elo": 2096.9, "points": 351.0,
+     "played": 400, "wins": 351, "losses": 49, "draws": 0, "forfeits": 0,
+     "forfeit_reasons": {}, "wins_first": 177, "wins_second": 174,
+     "avg_shots_to_win": 38.5, "hit_rate": 0.434, ...}
   ],
-  "pairs": [{"a": "easy", "b": "hard", "wins_a": 0, "wins_b": 20, "draws": 0}],
+  "pairs": [{"a": "easy", "b": "hard", "wins_a": 0, "wins_b": 100, "draws": 0}],
   "rejected": [],
   "generated_at": "2026-11-01T12:00:00+00:00"
 }

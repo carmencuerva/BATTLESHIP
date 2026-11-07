@@ -65,7 +65,7 @@ OnCall = Callable[[int, str, float], None]
 @dataclass(frozen=True)
 class Config:
     format: str = "league"
-    games_per_pair: int = 20
+    games_per_pair: int = 100
     knockout_games: int = 10  # championship: games per knockout match
     top: int = 4  # championship: league places that reach the knockout
     seed: int = 0
@@ -370,7 +370,7 @@ def standings(
 ) -> dict[str, Any]:
     """Turn the league's game records into the leaderboard (a JSON-ready dict)."""
     stats = {p.name: _new_stats() for p in players}
-    ratings = {p.name: elo.INITIAL for p in players}
+    results: list[tuple[str, str, float]] = []
     pairs: dict[tuple[str, str], dict[str, Any]] = {}
     for (i, j, _), rec in zip(games, records, strict=True):
         names = (players[i].name, players[j].name)
@@ -403,10 +403,8 @@ def standings(
             pair["draws"] += 1
         else:
             pair["wins_a" if winner == 0 else "wins_b"] += 1
-        score = 0.5 if winner is None else 1.0 - winner
-        ratings[names[0]], ratings[names[1]] = elo.update(
-            ratings[names[0]], ratings[names[1]], score
-        )
+        results.append((names[0], names[1], 0.5 if winner is None else 1.0 - winner))
+    ratings = elo.fit([p.name for p in players], results)
 
     table = []
     for p in players:

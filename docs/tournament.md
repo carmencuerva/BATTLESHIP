@@ -1,7 +1,7 @@
 # Tournament
 
 ```bash
-battleship-tournament [--format league|simple|championship] [--games 20] [--seed 0]
+battleship-tournament [--format league|simple|championship] [--games 100] [--seed 0]
                       [--knockout-games 10] [--top 4]
                       [--size 10] [--fleet 5,4,3,3,2]
                       [--time-budget 2] [--build-budget 2]
@@ -10,14 +10,17 @@ battleship-tournament [--format league|simple|championship] [--games 20] [--seed
 
 ## Format
 
-- **Round-robin:** every pair of admitted players plays `--games` games (20 by default).
+- **Round-robin:** every pair of admitted players plays `--games` games (100 by default; with fewer, the order between close players is largely luck).
 - **Mirrored pairs:** games `2k` and `2k+1` of a pair use the same seeds (so the same fleets
   for seeded bots), and each player shoots first once.
 - **Reproducible:** each game's seeds depend only on the tournament seed and the two names.
   Adding a new player does not change the games between the others.
 - **Ranking:**
-    - `league` (default) sorts by **Elo**. Everyone starts at 1500, K = 32, and the games
-      are processed in schedule order.
+    - `league` (default) sorts by an **Elo-scale rating** fitted to all the games at once
+      (the maximum-likelihood fit of the Elo model, also called Bradley-Terry; see
+      `src/battleship/elo.py`). 400 points of difference mean 10-to-1 odds; the mean is
+      1500. Unlike updating Elo game by game, it does not depend on the order of the games,
+      and in a round robin more points always means a higher rating.
     - `simple` sorts by **points**: 1 per win, ½ per draw.
     - Ties go to fewer forfeits, then the name.
 
@@ -60,14 +63,14 @@ If both bots fail while building or placing, the game is a draw.
 ```json
 {
   "format": "league",
-  "config": {"games_per_pair": 20, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
+  "config": {"games_per_pair": 100, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
   "standings": [
-    {"rank": 1, "name": "hard", "icon": "🧠", "elo": 1735.7, "points": 66.0,
-     "played": 80, "wins": 66, "losses": 14, "draws": 0, "forfeits": 0,
-     "forfeit_reasons": {}, "wins_first": 35, "wins_second": 31,
-     "avg_shots_to_win": 38.2, "hit_rate": 0.427, ...}
+    {"rank": 1, "name": "lucia", "icon": "🐬", "elo": 2096.9, "points": 351.0,
+     "played": 400, "wins": 351, "losses": 49, "draws": 0, "forfeits": 0,
+     "forfeit_reasons": {}, "wins_first": 177, "wins_second": 174,
+     "avg_shots_to_win": 38.5, "hit_rate": 0.434, ...}
   ],
-  "pairs": [{"a": "easy", "b": "hard", "wins_a": 0, "wins_b": 20, "draws": 0}],
+  "pairs": [{"a": "easy", "b": "hard", "wins_a": 0, "wins_b": 100, "draws": 0}],
   "rejected": [],
   "generated_at": "2026-11-01T12:00:00+00:00"
 }
