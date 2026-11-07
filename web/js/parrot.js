@@ -4,8 +4,7 @@
 import { getLang } from "./i18n.js";
 import { parrotSay } from "./sound.js";
 
-// Drawn in profile: one eye, the beak to the right.
-export const PARROT_SVG = `
+const PARROT_SVG = `
 <svg viewBox="0 0 160 200" aria-hidden="true">
   <g class="perch">
     <rect x="8" y="176" width="146" height="13" rx="6.5" fill="#7a4a22" stroke="#3d2210" stroke-width="2.5"/>
@@ -49,22 +48,15 @@ export const PARROT_SVG = `
   </g>
 </svg>`;
 
-// How long each kind of line stays (ms): `hold` before another may replace it, `life` on
-// screen. `rank`: a line only ever gives way to one of equal or higher rank, so "your turn"
-// never cuts off a sink, and never queues up behind one either.
-const MOODS = {
-  turn: { hold: 700, life: 1700, rank: 1, bubble: "turn" },
-  sunk: { hold: 1700, life: 3000, rank: 2, bubble: "sunk" },
-  lost: { hold: 1700, life: 3200, rank: 2, bubble: "lost" },
-  victory: { hold: 1800, life: 3400, rank: 3, bubble: "sunk" },
-  defeat: { hold: 1800, life: 3400, rank: 3, bubble: "miss" },
-  info: { hold: 1200, life: 3000, rank: 1, bubble: "info" },
+const DEFAULTS = {
+  sunk: { hold: 1500, life: 2800 },
+  info: { hold: 1200, life: 3000 },
+  miss: { hold: 1200, life: 3000 },
 };
 
 // Mounts the parrot in `dock` (the column between the boards) and returns
 // {say(text, {mood, voice}), rest(), destroy()}. Lines are shown for at least `hold` ms;
-// only the newest waiting line is kept, so fast games never build up a backlog, and two
-// lines never play at once (a new one cuts the old voice off).
+// only the newest waiting line is kept, so fast games never build up a backlog.
 // The bird never moves: no flights, hops, bobbing or flapping. It never takes clicks.
 export function createParrot(dock) {
   dock.innerHTML = `
@@ -76,21 +68,18 @@ export function createParrot(dock) {
   const text = dock.querySelector(".bubble-text");
   let pending = null;
   let freeAt = 0;
-  let showing = 0; // the rank of the line on screen while it holds
   const timers = { next: null, hide: null };
-  const moodOf = (msg) => MOODS[msg.mood] ?? MOODS.info;
 
   function show(msg) {
-    const mood = moodOf(msg);
-    freeAt = performance.now() + mood.hold;
-    showing = mood.rank;
+    const timing = { ...(DEFAULTS[msg.mood] ?? DEFAULTS.info), ...msg };
+    freeAt = performance.now() + timing.hold;
     clearTimeout(timers.hide);
     text.textContent = msg.text;
     bubble.className = "bubble";
     void bubble.offsetWidth; // restart the pop-in animation
-    bubble.className = `bubble show mood-${mood.bubble}`;
-    parrotSay(msg.voice, getLang(), msg.mood); // a squawk, then the same words out loud
-    timers.hide = setTimeout(() => bubble.classList.add("hide"), mood.life);
+    bubble.className = `bubble show mood-${msg.mood ?? "info"}`;
+    parrotSay(msg.voice, getLang()); // a squawk, then the same words out loud
+    timers.hide = setTimeout(() => bubble.classList.add("hide"), timing.life);
   }
 
   function pump() {
@@ -104,21 +93,11 @@ export function createParrot(dock) {
   return {
     say(textValue, options = {}) {
       const msg = { text: textValue, ...options };
-      const rank = moodOf(msg).rank;
       const wait = freeAt - performance.now();
       if (wait <= 0 && !timers.next) {
         show(msg);
         return;
       }
-      if (wait > 0 && rank > showing) {
-        // more important than what is on screen: say it now
-        clearTimeout(timers.next);
-        timers.next = null;
-        pending = null;
-        show(msg);
-        return;
-      }
-      if (rank < showing || (pending && rank < moodOf(pending).rank)) return; // not worth waiting
       pending = msg; // only the newest waiting line is kept
       if (!timers.next) timers.next = setTimeout(pump, Math.max(0, wait));
     },

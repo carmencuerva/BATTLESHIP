@@ -164,9 +164,8 @@ export function showEndScreen(kind, labels, { onAgain, onMenu } = {}) {
   document.body.appendChild(overlay);
 
   const stops = [];
-  // the fanfare or the lament is the music's (music.js); here only coins or the storm
-  if (victory) sfx.coins();
-  else sfx.thunder(0);
+  if (victory) sfx.victory();
+  else sfx.defeat();
   if (!victory) {
     stops.push(startRain(overlay.querySelector(".rain")));
     stops.push(startLightning(overlay));

@@ -11,29 +11,22 @@ the same code plays the official tournament in CI and runs in your browser via
 - **Your pirate name**: the page asks for it and the parrot calls you by it (deckhand until
   you sink your first ship, captain after that). It is stored only in your own browser
   (`localStorage`); nothing is sent anywhere.
-- **The captain's cabin**: every screen happens inside the captain's cabin. On the
-  start screen a parchment board on the table holds the choices in groups: the battle
-  (three illustrated cards), the voyage (fleet, size of the sea, wind and enemy captain,
-  each with big controls), your name, the big *All hands, attack!* button and the logbook
-  (the pirate code). Boards and controls are always seen straight on. Everything is drawn
-  by the page's own code (`web/js/cabin-art.js`).
-- **Placing your fleet**: the first time, the parrot walks you through it one step at a
-  time (a **?** button brings the tutorial back).
+- **The captain's cabin**: you set up each game inside the captain's cabin. The three
+  miniatures on the chart choose the mode, and the objects on the table hold the rest:
+  the wanted poster (your name), the spyglass (the enemy captain), the ship models (the
+  fleet), the dividers (the size of the sea), the compass (the wind) and the logbook (the
+  pirate code). Everything in it is drawn by the page's own code (`web/js/cabin-art.js`).
 - **The parrot** sits still on its perch between the two boards, so it never covers them.
-  It speaks only at a few moments: when your turn starts, when you sink an enemy ship
-  (telling you how many are left), when the enemy sinks one of yours (saying it was from
-  your fleet) and when the game ends. A new line never plays over another or queues up. Its words always appear in its
+  It speaks rarely: when the battle starts, when you sink a ship (telling you
+  how many enemy ships are left) and when the game ends. Its words always appear in its
   speech bubble. Its lines live in `web/js/parrot-lines.js` if you want other words.
 - **Sound**: off until you turn it on with 🔊 (the page remembers your choice). The parrot
-  then squawks (synthesised by the page) and says its line in a lively, rather high voice
-  that changes with the moment (thrilled, worried, sad…), using your device's most natural
-  voice; with no voice for the language it only squawks. Its voice, its moods and its
-  squawks are constants at the top of `web/js/sound.js`.
-- **Music**: original pieces composed for the game and played live by the page
-  (`web/js/music.js`, no recordings): a sea shanty in 6/8 for the menus and placing your
-  fleet, an epic piece with war drums and brass during the battle, and a fanfare or a
-  lament at the end. Each fades into the next, never two at once. It starts after your
-  first click with sound on, quietens while the parrot speaks and pauses in a hidden tab.
+  then squawks (synthesised by the page) and says its line in a low voice, using your
+  device's voices; with no voice for the language it only squawks. Its pitch, speed and
+  squawk are constants at the top of `web/js/sound.js`.
+- **Music**: an original sea shanty in 6/8, composed for the game and played live by the
+  page (`web/js/music.js`, no recordings). It starts after your first click with sound on,
+  carries on across screens, quietens while the parrot speaks and pauses in a hidden tab.
   The slider button next to 🔊 sets the music and parrot volumes (remembered). With *reduce motion* switched on in your system, the big animations stay
   still.
 - **Ranking**: the *Ranking* tab of the page shows the latest official tournament.

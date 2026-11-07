@@ -49,9 +49,7 @@ globalThis.document = {
 };
 
 const sound = await import("../../web/js/sound.js");
-const { BATTLE, DEFEAT, LOOP_EIGHTHS, SCORE, TRACKS, VICTORY, currentMusic, events, frequency, isPlaying, setMusic, updateMusic } = await import(
-  "../../web/js/music.js"
-);
+const { LOOP_EIGHTHS, SCORE, events, frequency, isPlaying, updateMusic } = await import("../../web/js/music.js");
 
 test("the score is well formed: 6/8 bars, real notes, known chords", () => {
   assert.equal(SCORE.length, 16);
@@ -65,29 +63,6 @@ test("the score is well formed: 6/8 bars, real notes, known chords", () => {
   assert.equal(frequency("A4"), 440);
   assert.ok(Math.abs(frequency("C#5") - 554.37) < 0.01);
   assert.ok(Math.abs(frequency("Bb1") - 58.27) < 0.01);
-});
-
-test("the battle, victory and defeat pieces are well formed", () => {
-  for (const [name, score, key] of [
-    ["battle", BATTLE, "brass"],
-    ["victory", VICTORY, "brass"],
-    ["defeat", DEFEAT, "lament"],
-  ]) {
-    for (const [b, bar] of score.bars.entries()) {
-      assert.equal(bar[key].reduce((n, [, d]) => n + d, 0), 16, `${name} bar ${b + 1} has sixteen sixteenths`);
-    }
-    const track = TRACKS[name];
-    assert.ok(track.notes.every((e, i) => i === 0 || track.notes[i - 1].at <= e.at), `${name} in time order`);
-    assert.ok(track.notes.every((e) => e.at < track.length && e.freq > 0 && e.freq < 2000), name);
-  }
-  assert.ok(TRACKS.battle.unit < TRACKS.shanty.unit, "the battle is faster than the shanty");
-  assert.equal(TRACKS.battle.loop, true);
-  assert.equal(TRACKS.victory.loop, false, "the fanfare plays once");
-  assert.equal(TRACKS.defeat.loop, false, "the lament plays once");
-  assert.ok(new Set(TRACKS.battle.notes.map((e) => e.voice)).has("drum"), "war drums in the battle");
-  const seconds = (name) => TRACKS[name].length * TRACKS[name].unit;
-  assert.ok(seconds("victory") > 6 && seconds("victory") < 20);
-  assert.ok(seconds("defeat") > 6 && seconds("defeat") < 20);
 });
 
 test("no music on load: not before a gesture, not while sound is off", () => {
@@ -106,21 +81,6 @@ test("turning sound on starts it; the music slider at 0 stops it", () => {
   assert.equal(isPlaying(), false);
   sound.setLevel("music", 0.4);
   assert.equal(isPlaying(), true);
-});
-
-test("each phase has its piece; asking for the same one again changes nothing", () => {
-  assert.equal(currentMusic(), "shanty");
-  const before = oscillators;
-  setMusic("battle");
-  assert.equal(currentMusic(), "battle");
-  setMusic("battle");
-  setMusic("nope"); // unknown pieces are ignored
-  assert.equal(currentMusic(), "battle");
-  setMusic("victory");
-  assert.equal(currentMusic(), "victory");
-  setMusic("shanty");
-  assert.equal(currentMusic(), "shanty");
-  assert.ok(oscillators >= before);
 });
 
 test("a hidden tab pauses it and coming back resumes it", () => {

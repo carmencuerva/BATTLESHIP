@@ -13,23 +13,12 @@ export const SUNK = 3;
 // "C7"-style names (see coords.js), used by the messages and the ship's log.
 export const coord = toCoord;
 
-// Shot marks. Water: a white peg on the sea. Hit: a painted red X. A sunk ship's cells keep a
-// dark, burnt X (and the wreck shows underneath), so the three never look alike.
-const WATER = `
-  <svg class="mark water" viewBox="0 0 40 40" aria-hidden="true">
-    <circle cx="20" cy="22" r="8" class="shadow"/>
-    <circle cx="20" cy="20" r="7.5" class="pearl"/>
-    <circle cx="17.5" cy="17.5" r="2.4" class="shine"/>
+const FLAME = `
+  <svg class="flame" viewBox="0 0 40 50" aria-hidden="true">
+    <path class="f-out" d="M20 2 C24 12 34 16 33 30 C33 42 26 48 20 48 C12 48 6 42 6 31 C6 22 12 19 13 11 C17 16 17 20 18 22 C20 15 18 8 20 2 Z" fill="#ff5a1f"/>
+    <path class="f-mid" d="M20 16 C23 23 29 26 28 35 C28 42 24 46 20 46 C15 46 11 42 11 36 C11 30 15 28 16 23 C18 27 18 29 19 30 C20 26 19 21 20 16 Z" fill="#ffae1a"/>
+    <path class="f-in" d="M20 30 C22 34 25 36 24 41 C24 44 22 46 20 46 C17 46 15 44 15 41 C15 38 18 36 20 30 Z" fill="#fff3a0"/>
   </svg>`;
-
-const CROSS = (kind) => `
-  <svg class="mark ${kind}" viewBox="0 0 40 40" aria-hidden="true">
-    <path class="x-edge" d="M9 8 L32 31 M31 8 L8 32"/>
-    <path class="x-paint" d="M9 8 L32 31 M31 8 L8 32"/>
-    <path class="x-shine" d="M11 9.5 L19 17.5 M29.5 9.5 L24 15"/>
-  </svg>`;
-const HIT_X = CROSS("hit-x");
-const SUNK_X = CROSS("sunk-x");
 
 const CROSSHAIR = `
   <svg viewBox="0 0 100 100" aria-hidden="true">
@@ -125,13 +114,12 @@ export function renderBoard(container, opts) {
       let style = "";
       if (s === MISS) {
         classes.push("miss");
-        inner = WATER;
+        inner = `<span class="splash-dot"></span>`;
       } else if (s === HIT) {
         classes.push("hit");
-        inner = HIT_X;
+        inner = FLAME;
       } else if (s === SUNK) {
         classes.push("sunk");
-        inner = SUNK_X;
       } else {
         if (opts.hints?.[r]?.[c]) classes.push("hint");
         if (opts.clickable) classes.push("clickable");
