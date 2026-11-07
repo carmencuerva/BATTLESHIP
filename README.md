@@ -53,14 +53,23 @@ The full guide is [Write a bot](docs/write-a-bot.md). See also [CONTRIBUTING.md]
 |-----|----------|
 | 🎲 random | shoots at random |
 | 🐣 easy | scans the board row by row |
-| 🎯 medium | parity hunt, then finishes every ship it hits |
+| 🎯 medium | parity hunt, then finishes every ship it hits; never shoots where the no-touch rule leaves only water |
 | 🧠 hard | shoots the most likely cell given every legal ship position; hides its fleet where hunters look least |
+
+Changes to the ladder (November 2026), measured over 1,000 games per pair (seed 0):
+
+- **medium** used to shoot cells the no-touch rule had already proved to be water (around
+  sunk ships, diagonal to hits): 7–8 wasted shots per game. It now skips them, so it wins
+  in 42.8 shots instead of 51.1. It still loses to hard (243–757).
+- **hard** plays exactly as before (same shots on 12,031 checked positions), but its
+  probability map is computed about 6× faster, leaving a wider margin under the 2 s budget.
+- **random** and **easy** are unchanged.
 
 Submitted bots (`players/custom/`):
 
 | bot | author | strategy |
 |-----|--------|----------|
-| 🐬 lucia | Lucía Argüello | skips water the no-touch rule gives away; hunts where the longest ship still fits; hides its fleet like hard |
+| 🐬 lucia | Lucía Argüello | counts every ship position the no-touch rule allows, weighting the edges as much as it learns, during each game, that the rival hides there; hides its own fleet among the least exposed placements, drawn at random |
 
 ## Repository layout
 

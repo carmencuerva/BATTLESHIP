@@ -3,6 +3,7 @@ import statistics
 
 import pytest
 
+from battleship.bots import certain_water
 from battleship.game import DEFAULT_FLEET, DEFAULT_SIZE, is_valid_placement
 from battleship.registry import default_manifests, load_players
 from battleship.tournament import run_game
@@ -48,10 +49,11 @@ def test_lucia_never_shoots_certain_water():
         [5, 4, 3],
     )
     bot = lucia()
-    water = bot.certain_water(view)
+    water = certain_water(view)
     assert {(1, 0), (1, 1), (1, 2), (0, 2), (3, 3), (5, 5)} <= water
     for _ in range(20):
         shot = bot.choose_shot(view)
+        assert shot not in water
         assert shot in {(3, 4), (5, 4), (4, 3), (4, 5)}  # finishes the hit first
 
 
@@ -60,10 +62,10 @@ def test_lucia_extends_a_line_of_hits():
     assert lucia().choose_shot(view) in {(1, 0), (1, 3)}
 
 
-def test_lucia_hunts_away_from_earlier_shots_and_shares_its_map():
+def test_lucia_opens_in_the_middle_and_shares_its_map():
     bot = lucia()
     first = bot.choose_shot(EMPTY)
-    assert first in {(4, 4), (5, 5)}  # the centre, on the parity grid of the 2-ship
+    assert first in {(4, 4), (4, 5), (5, 4), (5, 5)}  # where most ship positions meet
     assert json.loads(json.dumps(bot.last_info)) == bot.last_info
     assert len(bot.last_info["heatmap"]) == 10
 

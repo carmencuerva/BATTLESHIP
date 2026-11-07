@@ -54,14 +54,25 @@ La guía completa está en [Escribe un bot](docs/write-a-bot.es.md). Mira tambi�
 |-----|------------|
 | 🎲 random | dispara al azar |
 | 🐣 easy | recorre el tablero fila a fila |
-| 🎯 medium | busca en damero y luego remata cada barco que toca |
+| 🎯 medium | busca en damero y luego remata cada barco que toca; nunca dispara donde la regla de no tocarse deja solo agua |
 | 🧠 hard | dispara a la casilla más probable según todas las posiciones legales de los barcos; esconde su flota donde menos miran los cazadores |
+
+Cambios en la escalera (noviembre de 2026), medidos con 1.000 partidas por pareja (semilla 0):
+
+- **medium** disparaba a casillas que la regla de no tocarse ya había demostrado que eran
+  agua (alrededor de barcos hundidos y en diagonal a los impactos): 7–8 disparos perdidos
+  por partida. Ahora las salta, así que gana en 42,8 disparos en vez de 51,1. Sigue
+  perdiendo con hard (243–757).
+- **hard** juega exactamente igual que antes (los mismos disparos en las 12.031 posiciones
+  comprobadas), pero calcula su mapa de probabilidad unas 6 veces más rápido, con más
+  margen bajo el límite de 2 s.
+- **random** y **easy** no cambian.
 
 Bots enviados (`players/custom/`):
 
 | bot | autoría | estrategia |
 |-----|--------|------------|
-| 🐬 lucia | Lucía Argüello | descarta el agua que delata la regla de no tocarse; busca donde aún cabe el barco más largo; esconde su flota como hard |
+| 🐬 lucia | Lucía Argüello | cuenta todas las posiciones de barco que permite la regla de no tocarse y da más peso a los bordes según aprende, en cada partida, si el rival se esconde allí; esconde su flota entre las colocaciones menos expuestas, elegida al azar |
 
 ## Estructura del repositorio
 

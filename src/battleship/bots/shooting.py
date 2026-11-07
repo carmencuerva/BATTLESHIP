@@ -63,16 +63,39 @@ def hit_clusters(view: View) -> list[list[Cell]]:
     return clusters
 
 
+def certain_water(view: View) -> set[Cell]:
+    """Unshot cells that cannot hold a ship, because ships never touch (not even diagonally):
+    the cells around a sunk ship, and the cells diagonal to a hit."""
+    size, cells = view["size"], view["cells"]
+    water: set[Cell] = set()
+    for r in range(size):
+        for c in range(size):
+            if cells[r][c] == SUNK:
+                water.update(neighbours(size, (r, c)))
+            elif cells[r][c] == HIT:
+                water.update(
+                    (r + dr, c + dc)
+                    for dr in (-1, 1)
+                    for dc in (-1, 1)
+                    if in_bounds(size, (r + dr, c + dc))
+                )
+    return {(r, c) for r, c in water if cells[r][c] == UNKNOWN}
+
+
 def hunt_target_shot(view: View, rng: random.Random) -> Cell:
     """Hunt on a parity grid until something is hit, then finish that ship.
 
     Target: with one hit, try its four neighbours; with a line of hits, extend the line.
     Hunt: only cells with ``(row + col) % shortest_ship == 0``, which every ship must cover.
+    Neither ever shoots where the no-touch rule says there can only be water.
     """
     size, cells = view["size"], view["cells"]
+    water = certain_water(view)
 
     def unknown(cs: list[Cell]) -> list[Cell]:
-        return [c for c in cs if in_bounds(size, c) and cells[c[0]][c[1]] == UNKNOWN]
+        return [
+            c for c in cs if in_bounds(size, c) and cells[c[0]][c[1]] == UNKNOWN and c not in water
+        ]
 
     clusters = hit_clusters(view)
     if clusters:
@@ -87,12 +110,35 @@ def hunt_target_shot(view: View, rng: random.Random) -> Cell:
         if candidates:
             return rng.choice(candidates)
 
+    open_cells = [c for c in legal_shots(view) if c not in water] or legal_shots(view)
     step = min(view["remaining"], default=1)
-    parity = [(r, c) for r, c in legal_shots(view) if (r + c) % step == 0]
-    return rng.choice(parity or legal_shots(view))
+    parity = [(r, c) for r, c in open_cells if (r + c) % step == 0]
+    return rng.choice(parity or open_cells)
 
 
 # --- probability density -----------------------------------------------------------------
+
+
+# Every position of a ship of a given length on a board of a given size, as
+# (cells, ring): the cells it covers and the cells around it. Computed once per shape.
+_POSITIONS: dict[tuple[int, int], list[tuple[tuple[Cell, ...], tuple[Cell, ...]]]] = {}
+
+
+def _positions(size: int, length: int) -> list[tuple[tuple[Cell, ...], tuple[Cell, ...]]]:
+    key = (size, length)
+    if key not in _POSITIONS:
+        found = []
+        for orientation in ("H", "V"):
+            for r in range(size):
+                for c in range(size):
+                    position = ship_cells(r, c, length, orientation)
+                    if not in_bounds(size, position[-1]):
+                        continue
+                    inside = set(position)
+                    ring = {n for x in position for n in neighbours(size, x)} - inside
+                    found.append((tuple(position), tuple(sorted(ring))))
+        _POSITIONS[key] = found
+    return _POSITIONS[key]
 
 
 def probability_map(view: View) -> list[list[int]]:
@@ -107,6 +153,7 @@ def probability_map(view: View) -> list[list[int]]:
     size, cells = view["size"], view["cells"]
     clusters = hit_clusters(view)
     cluster_of = {cell: i for i, cluster in enumerate(clusters) for cell in cluster}
+    cluster_size = [len(cluster) for cluster in clusters]
     blocked: set[Cell] = set()
     for r in range(size):
         for c in range(size):
@@ -118,27 +165,21 @@ def probability_map(view: View) -> list[list[int]]:
 
     heat = [[0] * size for _ in range(size)]
     for length in view["remaining"]:
-        for orientation in ("H", "V"):
-            for r in range(size):
-                for c in range(size):
-                    position = ship_cells(r, c, length, orientation)
-                    if not in_bounds(size, position[-1]) or any(x in blocked for x in position):
-                        continue
-                    inside = set(position)
-                    covered = {cluster_of[x] for x in position if x in cluster_of}
-                    if clusters and not covered:
-                        continue
-                    if any(not set(clusters[i]) <= inside for i in covered):
-                        continue
-                    if any(
-                        n in cluster_of and n not in inside
-                        for x in position
-                        for n in neighbours(size, x)
-                    ):
-                        continue
-                    for x, y in position:
-                        if cells[x][y] == UNKNOWN:
-                            heat[x][y] += 1
+        for position, ring in _positions(size, length):
+            if any(x in blocked for x in position):
+                continue
+            if clusters:
+                covered = [cluster_of[x] for x in position if x in cluster_of]
+                if not covered:
+                    continue
+                # every cluster it covers lies wholly inside it, and it touches no other hit
+                if sum(cluster_size[i] for i in set(covered)) != len(covered):
+                    continue
+                if any(n in cluster_of for n in ring):
+                    continue
+            for x, y in position:
+                if cells[x][y] == UNKNOWN:
+                    heat[x][y] += 1
     return heat
 
 

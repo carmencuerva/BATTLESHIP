@@ -15,7 +15,7 @@ class MediumBot(Player):
 
     @classmethod
     def get_description(cls):
-        return "Random fleet; hunts on a parity grid, then finishes every ship it hits."
+        return "Random fleet; hunts on a parity grid, finishes every ship it hits, skips proven water."
 
     @classmethod
     def get_icon(cls):

@@ -6,6 +6,7 @@ randomness), so they are easy to test and to combine.
 
 from battleship.bots.placement import random_fleet, stealth_fleet
 from battleship.bots.shooting import (
+    certain_water,
     hit_clusters,
     hunt_target_shot,
     probability_map,
@@ -15,6 +16,7 @@ from battleship.bots.shooting import (
 )
 
 __all__ = [
+    "certain_water",
     "hit_clusters",
     "hunt_target_shot",
     "probability_map",
