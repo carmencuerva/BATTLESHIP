@@ -24,6 +24,7 @@ packages = ["src/battleship"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: plays hundreds of games (the bot ladder); run by default, skip with -m 'not slow'"]
 
 [tool.ruff]
 line-length = 100
