@@ -17,6 +17,11 @@ Battleship Arena contains:
 The rules and every bot are written **once, in Python**. The same code runs the
 tournament in CI and the game in your browser, via [Pyodide](https://pyodide.org).
 
+The project starts from [nim-arena](https://github.com/jparisu/nim-arena) by jparisu (MIT):
+we reused its architecture (player API, manifest, tournament, CI, Pyodide web page, docs) and
+wrote a new game, new bots and a new interface on top. What comes from where is in
+[docs/UNDERSTAND.md](docs/UNDERSTAND.md#5-what-comes-from-nim-arena-and-what-is-ours).
+
 **▶ Play: <https://carmencuerva.github.io/BATTLESHIP/>** · **📖 Docs:
 <https://carmencuerva.github.io/BATTLESHIP/docs/>**
 
@@ -84,6 +89,7 @@ Submitted bots (`players/custom/`):
 
 ## Credits
 
+- Architecture: [nim-arena](https://github.com/jparisu/nim-arena) by jparisu and the NIM Arena contributors (MIT); its copyright notice is kept in [LICENSE](LICENSE).
 - Fonts: [Pirata One](https://fonts.google.com/specimen/Pirata+One), [Bangers](https://fonts.google.com/specimen/Bangers) and [Nunito](https://fonts.google.com/specimen/Nunito), all under the [SIL Open Font License 1.1](https://openfontlicense.org), served by Google Fonts.
 - Ships, parrot, the captain's cabin (room, windows, lanterns, chart, miniatures and every object on the table), effects and every sound are drawn or synthesised by this project's own code (SVG, CSS, Web Audio).
 - The background music is an original tune composed for this project and synthesised live (`web/js/music.js`).

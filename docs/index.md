@@ -5,6 +5,10 @@ tournament that ranks them. The rules and every bot are written **once, in Pytho
 the same code plays the official tournament in CI and runs in your browser via
 [Pyodide](https://pyodide.org).
 
+The project starts from [nim-arena](https://github.com/jparisu/nim-arena) by jparisu (MIT),
+whose architecture we reused for a new game, new bots and a new interface; see
+[Understand the project](UNDERSTAND.md) for what comes from where.
+
 - **Play**: [carmencuerva.github.io/BATTLESHIP](https://carmencuerva.github.io/BATTLESHIP/).
   You can play against a bot, watch two bots play each other, play another person on the same
   device, or run a tournament in the browser.

@@ -5,6 +5,10 @@ torneo automático que los clasifica. Las reglas y todos los bots se escriben **
 vez, en Python**: ese mismo código juega el torneo oficial en la CI y se ejecuta en tu
 navegador gracias a [Pyodide](https://pyodide.org).
 
+El proyecto parte de [nim-arena](https://github.com/jparisu/nim-arena), de jparisu (MIT),
+cuya arquitectura reutilizamos para un juego, unos bots y una interfaz nuevos; en
+[Entender el proyecto](ENTENDER.md) se explica qué viene de dónde.
+
 - **Jugar**: [carmencuerva.github.io/BATTLESHIP](https://carmencuerva.github.io/BATTLESHIP/).
   Puedes jugar contra un bot, ver a dos bots enfrentarse, jugar contra otra persona en el
   mismo dispositivo o lanzar un torneo en el navegador.
