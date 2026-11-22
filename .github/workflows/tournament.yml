@@ -1,7 +1,9 @@
 name: tournament
 
-# Replays the official tournament whenever the engine or the players change on main and
-# commits results/leaderboard.json if the standings moved.
+# Replays the official tournament whenever the engine or the players change on main.
+# main is protected (every change goes through a pull request), so this workflow does not
+# push: it shows the standings in the run summary and keeps the JSON as a downloadable
+# artifact. The page publishes its own freshly played standings (see pages.yml).
 
 on:
   push:
@@ -10,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: tournament
@@ -25,16 +27,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install .
-      - run: battleship-tournament
-      - name: Commit the leaderboard if the results changed
+      - name: Play the tournament
+        run: battleship-tournament | tee standings.txt
+      - name: Show the standings in the run summary
         run: |
-          # generated_at changes on every run; ignore it when deciding whether to commit.
-          if git diff --quiet -I '"generated_at"' -- results/leaderboard.json; then
-            echo "standings unchanged"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add results/leaderboard.json
-          git commit -m "Update leaderboard"
-          git push
+          {
+            echo "## Standings"
+            echo
+            echo '```'
+            cat standings.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leaderboard
+          path: results/leaderboard.json

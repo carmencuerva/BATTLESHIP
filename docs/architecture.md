@@ -59,6 +59,6 @@ Unlike CI, the browser cannot kill a hung bot. Its time budgets are therefore ge
 |----------|------|------|
 | `tests.yml` | every push and pull request | ruff, mypy, pytest on Python 3.10–3.13. In the `web` job: JS unit tests and the real `py.zip` running in Pyodide under Node |
 | `custom-players.yml` | changes to `players/` | `scripts/check_players.py` |
-| `tournament.yml` | changes to `src/` or `players/` on `main` | replays the tournament, commits `results/leaderboard.json` |
+| `tournament.yml` | changes to `src/` or `players/` on `main` | replays the tournament; standings in the run summary and as an artifact (no push: `main` is protected) |
 | `pages.yml` | push to `main` | builds the page, the leaderboard and these docs, then deploys them to GitHub Pages |
 | `docs.yml` | changes to the docs | `mkdocs build --strict` |
