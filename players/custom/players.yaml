@@ -4,5 +4,7 @@
 players:
   - file: lucia_bot.py
     class: LuciaBot
+  - file: ines_bot.py
+    class: InesBot
   - file: kraken_bot.py
     class: KrakenBot
