@@ -81,4 +81,6 @@ If both bots fail while building or placing, the game is a draw.
 - `rejected` lists the players that could not be admitted, with the reason.
 
 In CI, `tournament.yml` replays the tournament when `src/` or `players/` change on
-`main`, and commits the leaderboard. `pages.yml` publishes it with the web page.
+`main` and leaves the standings in the run summary and as an artifact (`main` is
+protected, so it does not push). `pages.yml` plays the tournament on its own and publishes
+the standings with the web page.

@@ -85,4 +85,6 @@ Si los dos bots fallan al construirse o al colocar, la partida es empate.
 - `rejected` lista los jugadores que no se pudieron admitir, con el motivo.
 
 En la CI, `tournament.yml` vuelve a jugar el torneo cuando cambian `src/` o `players/`
-en `main` y hace commit de la clasificación. `pages.yml` la publica junto con la web.
+en `main` y deja la clasificación en el resumen de la ejecución y como *artifact*
+(`main` está protegida, así que no hace push). `pages.yml` juega el torneo por su cuenta y
+publica la clasificación junto con la web.

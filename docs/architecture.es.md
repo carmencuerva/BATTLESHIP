@@ -62,6 +62,6 @@ entre partida y partida.
 |----------|--------|-----|
 | `tests.yml` | cada push y pull request | ruff, mypy y pytest en Python 3.10–3.13. En el job `web`: tests de JS y el `py.zip` real ejecutándose en Pyodide con Node |
 | `custom-players.yml` | cambios en `players/` | `scripts/check_players.py` |
-| `tournament.yml` | cambios en `src/` o `players/` en `main` | vuelve a jugar el torneo y hace commit de `results/leaderboard.json` |
+| `tournament.yml` | cambios en `src/` o `players/` en `main` | vuelve a jugar el torneo y deja la clasificación en el resumen y como *artifact* (sin push: `main` está protegida) |
 | `pages.yml` | push a `main` | construye la web, la clasificación y esta documentación, y las publica en GitHub Pages |
 | `docs.yml` | cambios en la documentación | `mkdocs build --strict` |

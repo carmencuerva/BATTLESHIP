@@ -56,7 +56,7 @@ cada nivel es más difícil que el anterior.
 | `scripts/check_players.py` | Comprueba los bots enviados: que se cargan con una identidad válida y que juegan una liguilla corta sin un solo abandono. |
 | `.github/workflows/tests.yml` | En cada push y PR: ruff, formato, mypy y pytest en Python 3.10, 3.12 y 3.13; y los tests de JavaScript más una prueba real de `py.zip` dentro de Pyodide (Node). |
 | `.github/workflows/custom-players.yml` | En PR o push que toquen `players/`: `check_players.py --games 4`. |
-| `.github/workflows/tournament.yml` | En push a `main` que toque `src/`, `players/` o `pyproject.toml`: juega el torneo oficial y hace commit de `results/leaderboard.json` si la clasificación cambió. |
+| `.github/workflows/tournament.yml` | En push a `main` que toque `src/`, `players/` o `pyproject.toml`: juega el torneo oficial, muestra la clasificación en el resumen de la ejecución y la guarda como *artifact*. No hace push: `main` está protegida. |
 | `.github/workflows/pages.yml` | En push a `main`: juega el torneo, construye `py.zip` y la documentación (MkDocs) y publica todo en GitHub Pages. |
 | `.github/workflows/docs.yml` | Comprueba que la documentación compila sin avisos (`mkdocs build --strict`). |
 
@@ -79,7 +79,7 @@ Lo que cruza son siempre cadenas JSON con datos planos. Las reglas, la legalidad
 3. `schedule` crea para cada pareja 100 partidas en parejas espejo: las partidas `2k` y `2k+1` usan las mismas semillas y cada jugador empieza una vez. Las semillas dependen solo de la semilla del torneo y de los dos nombres.
 4. Cada partida se juega en un proceso nuevo (`run_game_in_subprocess`): el proceso avisa de cada llamada a un bot con el tiempo que le queda; si no responde a tiempo, se mata y ese bot pierde por tiempo.
 5. `standings` cuenta victorias, abandonos y sus motivos, victorias como primero y como segundo, disparos medios para ganar, porcentaje de acierto, y ajusta la puntuación Elo con `elo.fit`.
-6. Se escribe `results/leaderboard.json`; si ha cambiado (sin contar `generated_at`), el workflow hace commit y push.
+6. Se escribe `results/leaderboard.json`; el workflow lo muestra en el resumen de la ejecución y lo guarda como *artifact*. No hace push, porque `main` está protegida y todo cambio entra por pull request. La copia de `results/leaderboard.json` del repositorio es solo de referencia (la usan los tests de la web).
 7. `pages.yml` (también en cada push a `main`) juega el mismo torneo por su cuenta, `build_web.py` copia `results/leaderboard.json` a `web/leaderboard.json`, y la pestaña Clasificación lo descarga con `fetch("leaderboard.json")` y lo pinta con `leaderboard.js`.
 
 ## 4. Por qué cada decisión de diseño
@@ -140,7 +140,7 @@ players/*/players.yaml ──► manifest.py ──► registry.py ──► tou
 - **Tiempo por llamada:** el proceso de la partida avisa antes de cada llamada a un bot del tiempo que le queda, y el torneo lo mata si se pasa (más 1 s de margen).
 - **Calendario:** parejas espejo con las mismas semillas; campeonato como liga + eliminatorias (nim-arena usa grupos de cuatro y copias de los bots incluidos).
 - **Clasificación:** nim-arena actualiza el Elo partida a partida con K = 32; nosotros ajustamos la puntuación a todas las partidas a la vez (Bradley-Terry), así que no depende del orden.
-- **Workflows:** el de nim-arena abre una pull request con la clasificación y Pages espera al torneo; el nuestro hace commit directo, y Pages juega su propio torneo.
+- **Workflows:** el de nim-arena abre una pull request con la clasificación y Pages espera al torneo; el nuestro no escribe en `main` (está protegida) y Pages juega su propio torneo.
 - **Bots de caza:** los cuatro niveles y CarLuBot (sección 6) son nuestros; los de nim-arena son minimax para Nim.
 - **Interfaz pirata:** el camarote en perspectiva, editor de colocación con arrastre, tableros ilustrados, modo rayos X, torneo en el navegador.
 - **El loro, la música y los sonidos:** frases, voz con la síntesis del navegador, música compuesta para el juego en Web Audio.
@@ -301,7 +301,7 @@ de la misma forma (hay un test que exige al menos 35 colocaciones distintas de 4
 
 ## Dudas por resolver
 
-- **Commit del leaderboard y Pages.** `tournament.yml` hace push con el token de GitHub Actions. Según la documentación de GitHub, los eventos creados con ese token no lanzan otros workflows, así que ese commit no debería volver a publicar la web. No afecta al resultado porque `pages.yml` juega su propio torneo, pero no lo hemos comprobado en Actions.
+- **Clasificación del repositorio.** Desde que `main` está protegida, `tournament.yml` ya no hace commit de `results/leaderboard.json`; la clasificación al día es la que publica `pages.yml` en la web, que juega su propio torneo en cada push a `main`.
 - **Tiempo en GitHub.** Los tiempos medidos (la peor partida de hard rondaba 1,2 s antes de acelerarlo, la de car_lu por debajo de 0,8 s) son de nuestro ordenador; no hemos medido cuánto más lentos son los runners de GitHub.
 - **nim-arena:** no hemos leído sus tests, sus plantillas de GitHub, su JavaScript ni sus bots por dentro (solo su descripción), así que no afirmamos cuánto se parecen a los nuestros.
 - **Web y trampas humanas:** en la web, los dos tableros completos están en la memoria de JavaScript (`match.sides[i].board`). Un bot no puede verlos, pero una persona con las herramientas del navegador sí. No es un problema para el torneo (que corre en Python), pero hay que saberlo.
