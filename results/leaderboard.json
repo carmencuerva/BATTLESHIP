@@ -17,25 +17,26 @@
   },
   "standings": [
     {
-      "name": "lucia",
+      "name": "car_lu",
       "authors": [
-        "Lucía Argüello"
+        "Lucía Argüello",
+        "Carmen Cuerva"
       ],
       "description": "Counts every ship position the no-touch rule allows; learns during the game whether you hide where hunters look least. Fleet hidden, never the same.",
       "icon": "🐬",
-      "source": "custom/lucia_bot.py",
-      "points": 499.0,
-      "elo": 1972.2,
+      "source": "custom/car_lu_bot.py",
+      "points": 507.0,
+      "elo": 2011.9,
       "played": 600,
-      "wins": 499,
-      "losses": 101,
+      "wins": 507,
+      "losses": 93,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 255,
-      "wins_second": 244,
-      "avg_shots_to_win": 37.3,
-      "hit_rate": 0.443,
+      "wins_first": 258,
+      "wins_second": 249,
+      "avg_shots_to_win": 37.6,
+      "hit_rate": 0.44,
       "rank": 1
     },
     {
@@ -46,17 +47,17 @@
       "description": "Hides its fleet where hunters look least; shoots the most likely cell.",
       "icon": "🧠",
       "source": "builtin/hard_bot.py",
-      "points": 425.0,
-      "elo": 1853.6,
+      "points": 428.0,
+      "elo": 1881.2,
       "played": 600,
-      "wins": 425,
-      "losses": 175,
+      "wins": 428,
+      "losses": 172,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 217,
-      "wins_second": 208,
-      "avg_shots_to_win": 37.7,
+      "wins_first": 219,
+      "wins_second": 209,
+      "avg_shots_to_win": 37.9,
       "hit_rate": 0.422,
       "rank": 2
     },
@@ -69,7 +70,7 @@
       "icon": "🦊",
       "source": "custom/ines_bot.py",
       "points": 420.0,
-      "elo": 1846.1,
+      "elo": 1869.0,
       "played": 600,
       "wins": 420,
       "losses": 180,
@@ -78,8 +79,8 @@
       "forfeit_reasons": {},
       "wins_first": 214,
       "wins_second": 206,
-      "avg_shots_to_win": 38.2,
-      "hit_rate": 0.42,
+      "avg_shots_to_win": 38.1,
+      "hit_rate": 0.421,
       "rank": 3
     },
     {
@@ -90,18 +91,18 @@
       "description": "Random fleet; hunts on a parity grid, finishes every ship it hits, skips proven water.",
       "icon": "🎯",
       "source": "builtin/medium_bot.py",
-      "points": 332.0,
-      "elo": 1714.6,
+      "points": 328.0,
+      "elo": 1727.8,
       "played": 600,
-      "wins": 332,
-      "losses": 268,
+      "wins": 328,
+      "losses": 272,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 171,
-      "wins_second": 161,
-      "avg_shots_to_win": 42.3,
-      "hit_rate": 0.376,
+      "wins_first": 168,
+      "wins_second": 160,
+      "avg_shots_to_win": 42.4,
+      "hit_rate": 0.373,
       "rank": 4
     },
     {
@@ -112,18 +113,18 @@
       "description": "Shoots where the biggest ship afloat has the most room; finishes what it hits.",
       "icon": "🦑",
       "source": "custom/kraken_bot.py",
-      "points": 309.0,
-      "elo": 1678.5,
+      "points": 308.0,
+      "elo": 1695.2,
       "played": 600,
-      "wins": 309,
-      "losses": 291,
+      "wins": 308,
+      "losses": 292,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
       "wins_first": 162,
-      "wins_second": 147,
+      "wins_second": 146,
       "avg_shots_to_win": 41.5,
-      "hit_rate": 0.374,
+      "hit_rate": 0.375,
       "rank": 5
     },
     {
@@ -134,18 +135,18 @@
       "description": "Random fleet; shoots at random, and after a hit tries the cells around it.",
       "icon": "🐣",
       "source": "builtin/easy_bot.py",
-      "points": 115.0,
-      "elo": 1190.7,
+      "points": 109.0,
+      "elo": 1125.8,
       "played": 600,
-      "wins": 115,
-      "losses": 485,
+      "wins": 109,
+      "losses": 491,
       "draws": 0,
       "forfeits": 0,
       "forfeit_reasons": {},
-      "wins_first": 59,
-      "wins_second": 56,
-      "avg_shots_to_win": 65.7,
-      "hit_rate": 0.268,
+      "wins_first": 55,
+      "wins_second": 54,
+      "avg_shots_to_win": 66.9,
+      "hit_rate": 0.27,
       "rank": 6
     },
     {
@@ -157,7 +158,7 @@
       "icon": "🎲",
       "source": "builtin/random_bot.py",
       "points": 0.0,
-      "elo": 244.3,
+      "elo": 189.2,
       "played": 600,
       "wins": 0,
       "losses": 600,
@@ -167,11 +168,53 @@
       "wins_first": 0,
       "wins_second": 0,
       "avg_shots_to_win": null,
-      "hit_rate": 0.168,
+      "hit_rate": 0.166,
       "rank": 7
     }
   ],
   "pairs": [
+    {
+      "a": "car_lu",
+      "b": "easy",
+      "wins_a": 98,
+      "wins_b": 2,
+      "draws": 0
+    },
+    {
+      "a": "car_lu",
+      "b": "hard",
+      "wins_a": 77,
+      "wins_b": 23,
+      "draws": 0
+    },
+    {
+      "a": "car_lu",
+      "b": "ines",
+      "wins_a": 78,
+      "wins_b": 22,
+      "draws": 0
+    },
+    {
+      "a": "car_lu",
+      "b": "kraken",
+      "wins_a": 81,
+      "wins_b": 19,
+      "draws": 0
+    },
+    {
+      "a": "car_lu",
+      "b": "medium",
+      "wins_a": 73,
+      "wins_b": 27,
+      "draws": 0
+    },
+    {
+      "a": "car_lu",
+      "b": "random",
+      "wins_a": 100,
+      "wins_b": 0,
+      "draws": 0
+    },
     {
       "a": "easy",
       "b": "hard",
@@ -191,13 +234,6 @@
       "b": "kraken",
       "wins_a": 2,
       "wins_b": 98,
-      "draws": 0
-    },
-    {
-      "a": "easy",
-      "b": "lucia",
-      "wins_a": 8,
-      "wins_b": 92,
       "draws": 0
     },
     {
@@ -230,13 +266,6 @@
     },
     {
       "a": "hard",
-      "b": "lucia",
-      "wins_a": 20,
-      "wins_b": 80,
-      "draws": 0
-    },
-    {
-      "a": "hard",
       "b": "medium",
       "wins_a": 70,
       "wins_b": 30,
@@ -258,13 +287,6 @@
     },
     {
       "a": "ines",
-      "b": "lucia",
-      "wins_a": 22,
-      "wins_b": 78,
-      "draws": 0
-    },
-    {
-      "a": "ines",
       "b": "medium",
       "wins_a": 72,
       "wins_b": 28,
@@ -275,13 +297,6 @@
       "b": "random",
       "wins_a": 100,
       "wins_b": 0,
-      "draws": 0
-    },
-    {
-      "a": "kraken",
-      "b": "lucia",
-      "wins_a": 20,
-      "wins_b": 80,
       "draws": 0
     },
     {
@@ -299,20 +314,6 @@
       "draws": 0
     },
     {
-      "a": "lucia",
-      "b": "medium",
-      "wins_a": 69,
-      "wins_b": 31,
-      "draws": 0
-    },
-    {
-      "a": "lucia",
-      "b": "random",
-      "wins_a": 100,
-      "wins_b": 0,
-      "draws": 0
-    },
-    {
       "a": "medium",
       "b": "random",
       "wins_a": 100,
@@ -321,5 +322,5 @@
     }
   ],
   "rejected": [],
-  "generated_at": "2026-11-22T17:19:23+00:00"
+  "generated_at": "2026-11-22T17:31:00+00:00"
 }
