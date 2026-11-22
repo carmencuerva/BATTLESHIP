@@ -78,7 +78,7 @@ Bot review (November 2026, after our professor's feedback):
   against 95; it beat random only 68% of the time). It is now a believable beginner: it
   shoots at random and finishes what it hits (66 shots; beats random 100–0, loses to
   medium 2–98).
-- **lucia** beat hard only because its constants (how much a rival hides on the border)
+- **car_lu** beat hard only because its constants (how much a rival hides on the border)
   had been measured on 10x10 against hard's placement; on 12x12 they were nearly even
   (108–92), and in the web's 10-game tournament hard could come out ahead. It now builds
   both hypotheses ("places at random" / "hides where hunters look least") from the board
@@ -100,7 +100,7 @@ Submitted bots (`players/custom/`):
 
 | bot | author | strategy |
 |-----|--------|----------|
-| 🐬 lucia | Lucía Argüello | counts every ship position the no-touch rule allows, like hard, but mixes two hypotheses about the rival ("places at random" and "hides where hunters look least") and learns during each game which one holds; hides its own fleet among the least exposed placements, drawn at random |
+| 🐬 car_lu | Lucía Argüello and Carmen Cuerva | counts every ship position the no-touch rule allows, like hard, but mixes two hypotheses about the rival ("places at random" and "hides where hunters look least") and learns during each game which one holds; hides its own fleet among the least exposed placements, drawn at random |
 
 ## Repository layout
 

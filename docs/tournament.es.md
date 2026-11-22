@@ -69,7 +69,7 @@ Si los dos bots fallan al construirse o al colocar, la partida es empate.
   "format": "league",
   "config": {"games_per_pair": 100, "seed": 0, "size": 10, "fleet": [5,4,3,3,2], ...},
   "standings": [
-    {"rank": 1, "name": "lucia", "icon": "🐬", "elo": 2028.5, "points": 341.0,
+    {"rank": 1, "name": "car_lu", "icon": "🐬", "elo": 2028.5, "points": 341.0,
      "played": 400, "wins": 341, "losses": 59, "draws": 0, "forfeits": 0,
      "forfeit_reasons": {}, "wins_first": 174, "wins_second": 167,
      "avg_shots_to_win": 37.7, "hit_rate": 0.441, ...}

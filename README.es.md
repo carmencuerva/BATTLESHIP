@@ -83,7 +83,7 @@ Cambios de la revisión de bots (noviembre de 2026, tras el feedback del profeso
 - **easy** recorría el tablero fila a fila y apenas se distinguía del azar (90 disparos
   frente a 95; ganaba a random solo el 68 %). Ahora es un principiante creíble: dispara al
   azar y remata lo que toca (66 disparos; gana a random 100–0 y pierde con medium 2–98).
-- **lucia** ganaba a hard solo porque sus constantes (cuánto se esconde un rival en el
+- **car_lu** ganaba a hard solo porque sus constantes (cuánto se esconde un rival en el
   borde) estaban medidas en 10×10 para la colocación de hard; en 12×12 casi empataban
   (108–92) y en el torneo de 10 partidas de la web hard podía quedar por delante. Ahora
   construye sus dos hipótesis («coloca al azar» / «se esconde donde menos miran») a partir
@@ -106,7 +106,7 @@ Bots enviados (`players/custom/`):
 
 | bot | autoría | estrategia |
 |-----|--------|------------|
-| 🐬 lucia | Lucía Argüello | cuenta todas las posiciones de barco que permite la regla de no tocarse, como hard, pero mezcla dos hipótesis sobre el rival («coloca al azar» y «se esconde donde menos miran los cazadores») y aprende en cada partida cuál es la buena; esconde su flota entre las colocaciones menos expuestas, elegida al azar |
+| 🐬 car_lu | Lucía Argüello y Carmen Cuerva | cuenta todas las posiciones de barco que permite la regla de no tocarse, como hard, pero mezcla dos hipótesis sobre el rival («coloca al azar» y «se esconde donde menos miran los cazadores») y aprende en cada partida cuál es la buena; esconde su flota entre las colocaciones menos expuestas, elegida al azar |
 
 ## Estructura del repositorio
 

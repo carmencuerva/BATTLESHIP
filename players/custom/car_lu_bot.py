@@ -1,4 +1,4 @@
-"""LuciaBot: a probability hunter that also learns, during the game, how its rival hides.
+"""CarLuBot: a probability hunter that also learns, during the game, how its rival hides.
 
 Shooting. For every unshot cell, add up the legal positions of the ships still afloat that
 cover it, and shoot the best one. A position is legal only if it agrees with everything
@@ -7,7 +7,7 @@ water, sunk ships and the ring around them, the cells diagonal to a hit, and it 
 brushes past a hit it does not contain. While a ship is hit but not sunk, only positions
 that contain those hits count, so the bot finishes it before hunting again.
 
-Unlike "hard", positions are not all worth the same. LuciaBot keeps two hypotheses about
+Unlike "hard", positions are not all worth the same. CarLuBot keeps two hypotheses about
 how the rival placed its fleet:
 
 - "even": every legal position equally likely (a random placement);
@@ -228,16 +228,16 @@ def hiding_belief(view, prior=None):
     return 1 / (1 + math.exp(-log_odds))
 
 
-class LuciaBot(Player):
+class CarLuBot(Player):
     """Probability hunter with the no-touch rule; learns whether the rival hides."""
 
     @classmethod
     def get_name(cls):
-        return "lucia"
+        return "car_lu"
 
     @classmethod
     def get_authors(cls):
-        return ["Lucía Argüello"]
+        return ["Lucía Argüello", "Carmen Cuerva"]
 
     @classmethod
     def get_description(cls):

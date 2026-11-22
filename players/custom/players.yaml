@@ -2,8 +2,8 @@
 #   - file: my_bot.py
 #     class: MyBot
 players:
-  - file: lucia_bot.py
-    class: LuciaBot
+  - file: car_lu_bot.py
+    class: CarLuBot
   - file: ines_bot.py
     class: InesBot
   - file: kraken_bot.py

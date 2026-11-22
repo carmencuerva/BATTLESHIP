@@ -32,7 +32,7 @@ cada nivel es más difícil que el anterior.
 | Carpeta | Qué hay |
 |---|---|
 | `players/builtin/` | La escalera de referencia (random, easy, medium, hard) y su `players.yaml`. Cada bot es una clase fina que llama a una estrategia de `bots/`. |
-| `players/custom/` | Los bots enviados por pull request (ahora `lucia_bot.py`) y su `players.yaml`. |
+| `players/custom/` | Los bots enviados por pull request (ahora `car_lu_bot.py`) y su `players.yaml`. |
 
 ### Web: `web/`
 
@@ -141,7 +141,7 @@ players/*/players.yaml ──► manifest.py ──► registry.py ──► tou
 - **Calendario:** parejas espejo con las mismas semillas; campeonato como liga + eliminatorias (nim-arena usa grupos de cuatro y copias de los bots incluidos).
 - **Clasificación:** nim-arena actualiza el Elo partida a partida con K = 32; nosotros ajustamos la puntuación a todas las partidas a la vez (Bradley-Terry), así que no depende del orden.
 - **Workflows:** el de nim-arena abre una pull request con la clasificación y Pages espera al torneo; el nuestro hace commit directo, y Pages juega su propio torneo.
-- **Bots de caza:** los cuatro niveles y LuciaBot (sección 6) son nuestros; los de nim-arena son minimax para Nim.
+- **Bots de caza:** los cuatro niveles y CarLuBot (sección 6) son nuestros; los de nim-arena son minimax para Nim.
 - **Interfaz pirata:** el camarote en perspectiva, editor de colocación con arrastre, tableros ilustrados, modo rayos X, torneo en el navegador.
 - **El loro, la música y los sonidos:** frases, voz con la síntesis del navegador, música compuesta para el juego en Web Audio.
 - **`scripts/check_players.py`** para validar envíos.
@@ -160,7 +160,7 @@ resultado en la `view`. A partir de ahí, todos usan las mismas deducciones:
   vertical. Como los barcos no se tocan, cada grupo es de un único barco aún a flote.
 - **Agua segura** (`certain_water`): alrededor de un barco hundido y en diagonal a un
   tocado solo puede haber agua, por la regla de no tocarse.
-- **Flota original** (`whole_fleet`, en lucia): `remaining` más la eslora de cada grupo de
+- **Flota original** (`whole_fleet`, en car_lu): `remaining` más la eslora de cada grupo de
   casillas hundidas.
 
 ### La escalera: cada nivel añade una idea
@@ -171,14 +171,14 @@ resultado en la `view`. A partir de ahí, todos usan las mismas deducciones:
 | easy | al azar | prueba las 4 casillas de al lado de cualquier tocado | no | al azar | 66 |
 | medium | en damero: `(fila + col) % barco_más_corto == 0` | sigue la línea de impactos por sus dos extremos | sí, nunca dispara al agua segura | al azar | 44 |
 | hard | la casilla que cubren más posiciones legales de los barcos | lo mismo, contando solo posiciones que pasan por el tocado | sí, dentro del recuento | `stealth_fleet`: la menos expuesta de 20 colocaciones al azar | 39 |
-| lucia | como hard, pero pondera cada posición según cómo cree que coloca el rival | igual que hard | sí | la menos expuesta de 120, con algo de azar | 39,4 (y 37,6 contra la flota de hard) |
+| car_lu | como hard, pero pondera cada posición según cómo cree que coloca el rival | igual que hard | sí | la menos expuesta de 120, con algo de azar | 39,4 (y 37,6 contra la flota de hard) |
 
 Media de 300 partidas por bot en 10×10 con la flota `[5, 4, 3, 3, 2]`. La colocación también
 cuenta: hard necesita 38,9 disparos contra una flota al azar, 42,6 contra la suya y 44,1
-contra la de lucia. Resultado del
+contra la de car_lu. Resultado del
 torneo oficial (100 partidas por pareja, semilla 0):
 
-| | easy | medium | hard | lucia |
+| | easy | medium | hard | car_lu |
 |---|---|---|---|---|
 | **random** | 0–100 | 0–100 | 0–100 | 0–100 |
 | **easy** | | 2–98 | 0–100 | 8–92 |
@@ -205,9 +205,9 @@ recuerda partidas anteriores; desempata al azar, así que no es predecible; y ha
 le pasan un espía (`test_no_view_reveals_a_ship_that_was_not_shot`). Medium le gana el
 30 % de las partidas, así que se le puede ganar.
 
-### Cómo decide lucia: hard + aprender cómo coloca el rival
+### Cómo decide car_lu: hard + aprender cómo coloca el rival
 
-Lucia parte del mismo recuento que hard, pero **no todas las posiciones valen lo mismo**.
+car_lu parte del mismo recuento que hard, pero **no todas las posiciones valen lo mismo**.
 Mantiene dos hipótesis sobre el rival:
 
 - **«al azar»** (`even`): toda posición legal es igual de probable.
@@ -224,16 +224,16 @@ evidencia: si es barco, se compara la probabilidad de que lo fuera según cada h
 (`hide[i] / even[i]`); si es agua, la de que no lo fuera (`(1 − hide[i]) / (1 − even[i])`).
 Los log-odds se suman con un peso de 0,5 por casilla, porque las casillas no son
 independientes (un barco ocupa varias) y contarlas enteras haría la creencia demasiado
-segura. Por eso el primer disparo de lucia suele ir al borde: es el que mejor distingue
+segura. Por eso el primer disparo de car_lu suele ir al borde: es el que mejor distingue
 entre las dos hipótesis.
 
-**Por qué ahora es robusta.** Antes, lucia usaba dos constantes medidas a mano en 10×10
+**Por qué ahora es robusto.** Antes, car_lu usaba dos constantes medidas a mano en 10×10
 («el 32 % de las casillas de barco caen en el borde si se coloca al azar, el 58 % si se
-esconde como hard»). En otros tableros esas cifras no valen, y en 12×12 hard y lucia casi
+esconde como hard»). En otros tableros esas cifras no valen, y en 12×12 hard y car_lu casi
 empataban (92–108). Ahora las dos hipótesis se calculan **a partir del propio tablero**
 (`_models`), así que funcionan en cualquier tamaño:
 
-| Tablero | Antes (hard–lucia) | Ahora (hard–lucia) |
+| Tablero | Antes (hard–car_lu) | Ahora (hard–car_lu) |
 |---|---|---|
 | 10×10, `[5,4,3,3,2]` | 73–127 | 51–149 |
 | 8×8, `[4,3,2,2]` | 51–149 | 34–166 |
@@ -243,11 +243,11 @@ empataban (92–108). Ahora las dos hipótesis se calculan **a partir del propio
 
 (200 partidas espejo por fila, semilla 0.)
 
-**Lo que cuesta.** Contra una flota colocada al azar, lucia necesita ~0,5 disparos más que
+**Lo que cuesta.** Contra una flota colocada al azar, car_lu necesita ~0,5 disparos más que
 hard (39,4 frente a 38,9), porque al principio sospecha que el rival se esconde. A cambio,
 contra un rival que se esconde gana mucho más: hard tarda 42,6 disparos en hundir la flota
-de hard y lucia solo 37,6.
-Contra medium (que coloca al azar) lucia y hard rinden igual: con 400 partidas, 76 % y 77 %.
+de hard y car_lu solo 37,6.
+Contra medium (que coloca al azar) car_lu y hard rinden igual: con 400 partidas, 76 % y 77 %.
 
 **Cómo coloca su flota.** Genera 120 colocaciones legales al azar, mide cuánto cubre cada
 una del mapa inicial de un cazador, y elige una de las menos expuestas con un sorteo
@@ -277,33 +277,33 @@ de la misma forma (hay un test que exige al menos 35 colocaciones distintas de 4
 | 7 | ¿Qué cruza entre JavaScript y Python? | Solo cadenas JSON con datos planos: `arena.call` serializa los argumentos y `webglue` devuelve JSON. |
 | 8 | ¿Dónde están las reglas? | Solo en `game.py`. La web pregunta a Python si una colocación o un disparo es legal. |
 | 9 | ¿Cómo se calcula el Elo? | Es la puntuación (escala 400, media 1500) que mejor explica todos los resultados a la vez, según el modelo de Bradley-Terry; se ajusta por iteraciones (Hunter, 2004), con un empate virtual contra una referencia para que no se dispare con un pleno. |
-| 10 | ¿Por qué no el Elo clásico partida a partida? | Porque depende del orden: con la versión anterior de lucia y 100 partidas por pareja, lucia ganaba a hard 70-30 y tenía más victorias, pero quedaba segunda. |
+| 10 | ¿Por qué no el Elo clásico partida a partida? | Porque depende del orden: con la versión anterior de car_lu y 100 partidas por pareja, car_lu ganaba a hard 70-30 y tenía más victorias, pero quedaba segunda. |
 | 11 | ¿Cómo funciona el mapa de probabilidades de hard? | Para cada casilla cuenta cuántas posiciones legales de los barcos que quedan la cubren (sin agua, sin el halo de los hundidos, sin rozar impactos ajenos); si hay un barco tocado, solo cuenta las que pasan por él. Dispara a la casilla con más. |
-| 12 | ¿En qué se diferencia LuciaBot de hard? | Cuenta las mismas posiciones legales, pero las pondera con una mezcla de dos hipótesis sobre el rival («coloca al azar» y «se esconde donde menos miran los cazadores»), construidas a partir del propio tablero; aprende cuál es la buena con la regla de Bayes, con cada casilla que destapa (agua incluida). Coloca su flota entre las menos expuestas de 120 candidatas, con algo de azar. Le gana a hard el 80 % en el torneo oficial (sección 6). |
-| 13 | ¿Por qué hard esconde su flota en los bordes? | `stealth_fleet` elige, de 20 colocaciones al azar, la que menos cubre el mapa de probabilidad inicial, que es más bajo en los bordes. Contra cazadores que no se adaptan (medium, una persona que empieza por el centro) funciona; lucia lo detecta y lo aprovecha. |
+| 12 | ¿En qué se diferencia CarLuBot de hard? | Cuenta las mismas posiciones legales, pero las pondera con una mezcla de dos hipótesis sobre el rival («coloca al azar» y «se esconde donde menos miran los cazadores»), construidas a partir del propio tablero; aprende cuál es la buena con la regla de Bayes, con cada casilla que destapa (agua incluida). Coloca su flota entre las menos expuestas de 120 candidatas, con algo de azar. Le gana a hard el 80 % en el torneo oficial (sección 6). |
+| 13 | ¿Por qué hard esconde su flota en los bordes? | `stealth_fleet` elige, de 20 colocaciones al azar, la que menos cubre el mapa de probabilidad inicial, que es más bajo en los bordes. Contra cazadores que no se adaptan (medium, una persona que empieza por el centro) funciona; car_lu lo detecta y lo aprovecha. |
 | 14 | ¿Qué es la búsqueda por paridad de medium? | Mientras busca, solo dispara a casillas con `(fila + columna) % barco_más_corto == 0`: todo barco de esa longitud pisa al menos una. |
-| 15 | ¿Por qué los barcos no pueden tocarse y cómo lo usan los bots? | Es una regla del juego que fijamos; gracias a ella, alrededor de un hundido y en diagonal a un impacto solo puede haber agua, y medium, hard y lucia no disparan ahí. easy no lo usa a propósito: es lo que lo hace más fácil que medium. |
+| 15 | ¿Por qué los barcos no pueden tocarse y cómo lo usan los bots? | Es una regla del juego que fijamos; gracias a ella, alrededor de un hundido y en diagonal a un impacto solo puede haber agua, y medium, hard y car_lu no disparan ahí. easy no lo usa a propósito: es lo que lo hace más fácil que medium. |
 | 16 | ¿Cómo es reproducible el torneo? | Toda la aleatoriedad sale de semillas: cada partida recibe semillas derivadas de la del torneo y de los dos nombres, y cada bot crea su `random.Random(seed)`. |
 | 17 | ¿Qué son las parejas espejo? | Partidas con las mismas semillas en las que cada jugador empieza una vez, para compensar la ventaja de empezar. |
 | 18 | ¿Por qué un manifiesto? | Para que un bot solo entre si una línea lo admite, visible en la misma pull request. |
 | 19 | ¿Qué pasa si alguien sube un bot roto? | `check_players.py` lo detecta en la PR; si aun así llega al torneo, se aparta en `rejected` y el torneo sigue. |
 | 20 | ¿Cuánto tiempo tiene un bot? | 2 s acumulados para colocar y disparar en toda la partida, y otros 2 s para construirse. En la web los límites son mucho mayores (30 s y 10 s) porque no se puede matar a un bot. |
-| 21 | ¿Por qué 100 partidas por pareja? | Con la lucia anterior, con 20 partidas el orden entre hard y lucia cambiaba según el número de partidas; con 1.000 la diferencia sí era clara. Con 100, cualquier diferencia de 15 puntos o más es fiable. |
+| 21 | ¿Por qué 100 partidas por pareja? | Con la versión anterior de car_lu, con 20 partidas el orden entre hard y car_lu cambiaba según el número de partidas; con 1.000 la diferencia sí era clara. Con 100, cualquier diferencia de 15 puntos o más es fiable. |
 | 22 | ¿Cómo llega la clasificación a la web? | `build_web.py` copia `results/leaderboard.json` a la web y la pestaña Clasificación lo descarga con `fetch`. |
 | 23 | ¿Qué es `last_info` y el modo rayos X? | Un campo opcional del bot (por ejemplo su mapa de calor) que la web dibuja sobre el tablero que ataca. El torneo lo ignora. |
 | 24 | ¿Qué parte del proyecto viene de nim-arena? | La arquitectura: API de jugador, manifiesto, torneo con procesos y abandonos, Elo, CI, web con Pyodide y documentación. El juego, los bots y la interfaz son nuestros (sección 5). |
 | 25 | ¿Cómo se testea? | pytest (motor, API, manifiesto, torneo, bots, puente web), ruff y mypy en la CI; tests de JavaScript con Node y una prueba de `py.zip` dentro de Pyodide. |
-| 26 | ¿Por qué hard le ganaba a lucia? | Lucia no apuntaba mejor que hard (contra flotas al azar, incluso peor); solo le sacaba ventaja porque sus constantes describían la colocación de hard en 10×10. En otros tableros casi empataban (12×12: 92–108), y en el torneo de la web, de 10 partidas por pareja, hard quedaba por delante o empataba aproximadamente una vez de cada cuatro. |
+| 26 | ¿Por qué hard le ganaba a car_lu? | car_lu no apuntaba mejor que hard (contra flotas al azar, incluso peor); solo le sacaba ventaja porque sus constantes describían la colocación de hard en 10×10. En otros tableros casi empataban (12×12: 92–108), y en el torneo de la web, de 10 partidas por pareja, hard quedaba por delante o empataba aproximadamente una vez de cada cuatro. |
 | 27 | ¿Cómo se detecta un impacto? | Lo decide el motor: `apply_shot` mira si la casilla pertenece a un barco (tocado) y si con ella todas las del barco están disparadas (hundido, con su eslora). El bot solo ve el resultado en la `view`. |
 | 28 | ¿Qué hace easy y por qué se cambió? | Dispara al azar y, tras un tocado, prueba las casillas de al lado hasta hundir el barco. Antes recorría el tablero fila a fila y era casi como random (90 disparos frente a 95). Ahora necesita 66: queda entre random y medium. |
-| 29 | ¿Es hard injusto? | No: solo usa la `view`, como una persona que juega bien, desempata al azar y no recuerda partidas. Es el mejor bot de la escalera, pero medium le gana el 30 % y lucia el 80 %. |
-| 30 | ¿Cómo sabemos que lucia gana en cualquier tablero? | Un test lento (`test_lucia_beats_hard_on_other_boards`) juega en 8×8 y 12×12, y medimos 8×8, 10×10, 12×12 y 15×15 (sección 6). |
+| 29 | ¿Es hard injusto? | No: solo usa la `view`, como una persona que juega bien, desempata al azar y no recuerda partidas. Es el mejor bot de la escalera, pero medium le gana el 30 % y car_lu el 80 %. |
+| 30 | ¿Cómo sabemos que car_lu gana en cualquier tablero? | Un test lento (`test_car_lu_beats_hard_on_other_boards`) juega en 8×8 y 12×12, y medimos 8×8, 10×10, 12×12 y 15×15 (sección 6). |
 
 ## Dudas por resolver
 
 - **Commit del leaderboard y Pages.** `tournament.yml` hace push con el token de GitHub Actions. Según la documentación de GitHub, los eventos creados con ese token no lanzan otros workflows, así que ese commit no debería volver a publicar la web. No afecta al resultado porque `pages.yml` juega su propio torneo, pero no lo hemos comprobado en Actions.
-- **Tiempo en GitHub.** Los tiempos medidos (la peor partida de hard rondaba 1,2 s antes de acelerarlo, la de lucia por debajo de 0,8 s) son de nuestro ordenador; no hemos medido cuánto más lentos son los runners de GitHub.
+- **Tiempo en GitHub.** Los tiempos medidos (la peor partida de hard rondaba 1,2 s antes de acelerarlo, la de car_lu por debajo de 0,8 s) son de nuestro ordenador; no hemos medido cuánto más lentos son los runners de GitHub.
 - **nim-arena:** no hemos leído sus tests, sus plantillas de GitHub, su JavaScript ni sus bots por dentro (solo su descripción), así que no afirmamos cuánto se parecen a los nuestros.
 - **Web y trampas humanas:** en la web, los dos tableros completos están en la memoria de JavaScript (`match.sides[i].board`). Un bot no puede verlos, pero una persona con las herramientas del navegador sí. No es un problema para el torneo (que corre en Python), pero hay que saberlo.
-- **Rivales humanos.** La hipótesis «se esconde» de lucia está pensada para cualquier rival que evite las casillas más vigiladas, pero solo la hemos medido contra bots; no sabemos cómo colocan de verdad las personas.
-- **Torneo de la web.** Por defecto juega 10 partidas por pareja: suficiente para ver el orden, pero con hard contra lucia (80–20) aún sale un empate o un resultado al revés en torno a 1 de cada 30 torneos. Con 20 partidas sería muy raro, pero tardaría el doble.
+- **Rivales humanos.** La hipótesis «se esconde» de car_lu está pensada para cualquier rival que evite las casillas más vigiladas, pero solo la hemos medido contra bots; no sabemos cómo colocan de verdad las personas.
+- **Torneo de la web.** Por defecto juega 10 partidas por pareja: suficiente para ver el orden, pero con hard contra car_lu (80–20) aún sale un empate o un resultado al revés en torno a 1 de cada 30 torneos. Con 20 partidas sería muy raro, pero tardaría el doble.
